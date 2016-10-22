@@ -43,18 +43,34 @@ while read FILENAME <&3; do
 
     ## Encode vocoder parameters with Ahocoder
     # Encode source sample
-    ahocoder16_64 $DIR_REF/$FILENAME.wav $DIR_VOC/$DIR_REF/$FILENAME.f0 $DIR_VOC/$DIR_REF/$FILENAME.mfcc $DIR_VOC/$DIR_REF/$FILENAME.vf
+    ahocoder16_64 $DIR_REF/$FILENAME.wav $DIR_VOC/$DIR_REF/$FILENAME.lf0 $DIR_VOC/$DIR_REF/$FILENAME.mcp $DIR_VOC/$DIR_REF/$FILENAME.vf
+    # Convert source vocoder parameter files to ASCII format
+    x2x +fa $DIR_VOC/$DIR_REF/$FILENAME.lf0 > $DIR_VOC/$DIR_REF/$FILENAME.lf0.dat
+    x2x +fa $DIR_VOC/$DIR_REF/$FILENAME.mcp | do_columns.pl -c 40 > $DIR_VOC/$DIR_REF/$FILENAME.mcp.dat
+    x2x +fa $DIR_VOC/$DIR_REF/$FILENAME.vf > $DIR_VOC/$DIR_REF/$FILENAME.vf.dat
 
     # Encode target sample
-    ahocoder16_64 $DIR_TST/$FILENAME.wav $DIR_VOC/$DIR_TST/$FILENAME.f0 $DIR_VOC/$DIR_TST/$FILENAME.mfcc $DIR_VOC/$DIR_TST/$FILENAME.vf
+    ahocoder16_64 $DIR_TST/$FILENAME.wav $DIR_VOC/$DIR_TST/$FILENAME.lf0 $DIR_VOC/$DIR_TST/$FILENAME.mcp $DIR_VOC/$DIR_TST/$FILENAME.vf
+    # Convert source vocoder parameter files to ASCII format
+    x2x +fa $DIR_VOC/$DIR_TST/$FILENAME.lf0 > $DIR_VOC/$DIR_TST/$FILENAME.lf0.dat
+    x2x +fa $DIR_VOC/$DIR_TST/$FILENAME.mcp | do_columns.pl -c 40 > $DIR_VOC/$DIR_TST/$FILENAME.mcp.dat
+    x2x +fa $DIR_VOC/$DIR_TST/$FILENAME.vf > $DIR_VOC/$DIR_TST/$FILENAME.vf.dat
 
     # Apply dynamic time warping
-    dtw -l 40 -v $DIR_FRM/$FILENAME.frames $DIR_VOC/$DIR_TST/$FILENAME.mfcc < $DIR_VOC/$DIR_REF/$FILENAME.mfcc > /dev/null
+    dtw -l 40 -v $DIR_FRM/$FILENAME.frames $DIR_VOC/$DIR_TST/$FILENAME.mcp < $DIR_VOC/$DIR_REF/$FILENAME.mcp > /dev/null
 
     # Convert frames file to ASCII format
-    x2x +ia $DIR_FRM/$FILENAME.frames | do_columns.pl -c 2 > $DIR_FRM/$FILENAME.txt
+    x2x +ia $DIR_FRM/$FILENAME.frames | do_columns.pl -c 2 > $DIR_FRM/$FILENAME.frames.txt
 
-    # TODO remove .frames file
+    # Remove binary files
+    rm $DIR_VOC/$DIR_REF/$FILENAME.lf0
+    rm $DIR_VOC/$DIR_REF/$FILENAME.mcp
+    rm $DIR_VOC/$DIR_REF/$FILENAME.vf
+
+    rm $DIR_VOC/$DIR_TST/$FILENAME.lf0
+    rm $DIR_VOC/$DIR_TST/$FILENAME.mcp
+    rm $DIR_VOC/$DIR_TST/$FILENAME.vf
+
     rm $DIR_FRM/$FILENAME.frames
 done 3< basenames.list
 
