@@ -26,7 +26,7 @@ def parse_file(param_len, file_path):
     file_lines = open_file.readlines()
 
     file_params = np.empty([len(file_lines), param_len])
-    for index in range(0, len(file_lines) - 1, 1):
+    for index in range(0, len(file_lines), 1):
         aux = file_lines[index].split('\n')
         file_params[index, :] = aux[0].split('\t')
 
