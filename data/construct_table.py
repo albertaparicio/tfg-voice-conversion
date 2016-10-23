@@ -1,4 +1,5 @@
 # Created by albert aparicio on 21/10/16
+# coding: utf-8
 
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
