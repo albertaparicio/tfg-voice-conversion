@@ -1,4 +1,4 @@
-# Created by albert aparicio on 21/10/16
+# Created by Albert Aparicio on 21/10/16
 # coding: utf-8
 
 # This import makes Python use 'print' as in Python 3.x
@@ -26,6 +26,7 @@ def parse_file(param_len, file_path):
     open_file = open(file_path, 'r')
     file_lines = open_file.readlines()
 
+    # TODO investigate if NumPy requires preallocating matrices
     file_params = np.empty([len(file_lines), param_len])
     for index in range(0, len(file_lines), 1):
         aux = file_lines[index].split('\n')
@@ -59,7 +60,7 @@ def align_frames(dtw_frames, source_params, target_params):
     return data
 
 
-def build_datatable(basename, source_dir, target_dir, dtw_dir):
+def build_file_table(basename, source_dir, target_dir, dtw_dir):
     """This function builds a datatable from the aligned vocoder frames.
     It reads and parses the input files, concatenates the data and aligns it.
 
@@ -112,5 +113,34 @@ def build_datatable(basename, source_dir, target_dir, dtw_dir):
     # Align parameters
     return align_frames(dtw_frames, source_params, target_params)
 
-# file_datatable = build_datatable('SF1_TF1_200001', 'vocoded/test_source/', 'vocoded/test_target/', 'frames/')
+
+def construct_datatable(basenames_list, source_dir, target_dir, dtw_dir):
+    # Parse basenames list
+    basenames_file = open(basenames_list, 'r')
+    basenames_lines = basenames_file.readlines()
+
+    # Strip '\n' characters
+    basenames_lines = [line.split('\n')[0] for line in basenames_lines]
+
+    # Construct table of 1st file
+    datatable = build_file_table(basenames_lines[0], source_dir, target_dir, dtw_dir)
+
+    # Iterate through the rest of files and concatenate them below
+    for i in range(1, len(basenames_lines), 1):
+        datatable = np.concatenate((
+            datatable,
+            build_file_table(basenames_lines[i], source_dir, target_dir, dtw_dir)
+        ))
+
+    # Return result
+    return datatable
+
+# TODO investigate the best way to store the datatable in a file
+
+# file_datatable = construct_datatable('basenames.list', 'vocoded/test_source/', 'vocoded/test_target/', 'frames/')
 # np.savetxt('datatable.csv', file_datatable, delimiter=',')
+#
+# Compress with .gz to save space (aprox 4x smaller file)
+# np.savetxt('datatable.csv.gz', file_datatable, delimiter=',')
+#
+# exit()
