@@ -1,23 +1,55 @@
-'''
+"""
 Created by albert aparicio on 18/10/16
 
 This script is based off of the 'mnist_irnn' example from Keras
 (https://github.com/fchollet/keras/blob/master/examples/mnist_irnn.py)
 
 This is a test script for initializing and training a fully-connected DNN
-'''
+"""
 
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
-# TODO Clean up unused imports
+import numpy as np
 from keras.datasets import mnist
-from keras.models import Sequential
+from keras.initializations import normal, identity
 from keras.layers import Dense, Activation
 from keras.layers import SimpleRNN
-from keras.initializations import normal, identity
+from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.utils import np_utils
+
+# Switch to decide if datatable must be build or can be retrieved
+build_datatable = False
+
+# TODO Load proper data for a DNN training
+if build_datatable:
+    import construct_table as ct
+
+    # Build datatable of the training data (data is already encoded with Ahocoder)
+    train_data = ct.construct_datatable(
+        'data/training/basenames.list',
+        'data/training/vocoded/SF1/',
+        'data/training/vocoded/TF1/',
+        'data/training/frames/'
+    )
+    # Save and compress with .gz to save space (aprox 4x smaller file)
+    np.savetxt('data/train_datatable.csv.gz', train_data, delimiter=',')
+
+    # Build datatable of the test data (data is already encoded with Ahocoder)
+    test_data = ct.construct_datatable(
+        'data/test/basenames.list',
+        'data/test/vocoded/SF1/',
+        'data/test/vocoded/TF1/',
+        'data/test/frames/'
+    )
+    # Save and compress with .gz to save space (aprox 4x smaller file)
+    np.savetxt('data/test_datatable.csv.gz', test_data, delimiter=',')
+
+else:
+    # Retrieve datatable from .csv.gz file
+    train_data = np.loadtxt('data/train_datatable.csv.gz', delimiter=',')
+    test_data = np.loadtxt('data/test_datatable.csv.gz', delimiter=',')
 
 # TODO adjust sizes and other constants
 batch_size = 32
@@ -28,7 +60,8 @@ hidden_units = 100
 learning_rate = 1e-6
 clip_norm = 1.0
 
-# TODO Load proper data for a DNN training
+# Split into train and validation (17500 train, 2500 validation)
+
 # the data, shuffled and split between train and test sets
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
