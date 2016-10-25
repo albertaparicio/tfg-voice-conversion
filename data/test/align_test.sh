@@ -58,6 +58,12 @@ while read FILENAME <&3; do
     x2x +fa ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp | do_columns.pl -c 40 > ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp.dat
     x2x +fa ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf > ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat
 
+    # Interpolate lfo and vf data
+    # Source
+    interpolate.py --f0_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.vf.dat --no-uv
+    # Target
+    interpolate.py --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
+
     # Apply dynamic time warping
     dtw -l 40 -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null
 

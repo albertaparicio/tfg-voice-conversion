@@ -72,12 +72,16 @@ def build_file_table(basename, source_dir, target_dir, dtw_dir):
 
     # Parse files
     source_f0 = parse_file(1, source_dir + basename + '.' + 'lf0' + '.dat')
+    source_f0_i = parse_file(1, source_dir + basename + '.' + 'lf0' + '.i.dat')  # Interpolated data
     source_mcp = parse_file(40, source_dir + basename + '.' + 'mcp' + '.dat')
     source_vf = parse_file(1, source_dir + basename + '.' + 'vf' + '.dat')
+    source_vf_i = parse_file(1, source_dir + basename + '.' + 'vf' + '.i.dat')  # Use interpolated data
 
     target_f0 = parse_file(1, target_dir + basename + '.' + 'lf0' + '.dat')
+    target_f0_i = parse_file(1, target_dir + basename + '.' + 'lf0' + '.i.dat')  # Use interpolated data
     target_mcp = parse_file(40, target_dir + basename + '.' + 'mcp' + '.dat')
     target_vf = parse_file(1, target_dir + basename + '.' + 'vf' + '.dat')
+    target_vf_i = parse_file(1, target_dir + basename + '.' + 'vf' + '.i.dat')  # Use interpolated data
 
     dtw_frames = parse_file(2, dtw_dir + basename + '.frames.txt')
 
@@ -98,15 +102,15 @@ def build_file_table(basename, source_dir, target_dir, dtw_dir):
     # Concatenate source and target params
     source_params = np.concatenate((
         source_mcp,
-        source_f0,
-        source_vf,
+        source_f0_i,
+        source_vf_i,
         source_voiced
     ), axis=1)
 
     target_params = np.concatenate((
         target_mcp,
-        target_f0,
-        target_vf,
+        target_f0_i,
+        target_vf_i,
         target_voiced
     ), axis=1)
 
