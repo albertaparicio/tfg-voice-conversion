@@ -11,8 +11,8 @@ This is a test script for initializing and training a fully-connected DNN
 from __future__ import print_function
 
 import numpy as np
-from keras.models import Sequential
 from keras.layers import Dense
+from keras.models import Sequential
 from keras.optimizers import RMSprop
 # from keras.datasets import mnist
 # from keras.initializations import normal, identity
@@ -95,7 +95,8 @@ model.compile(loss='mse', optimizer=rmsprop)
 
 history = model.fit(src_train_frames, trg_train_frames, batch_size=batch_size, nb_epoch=nb_epochs,
           verbose=1, validation_data=(src_valid_frames, trg_valid_frames))
-np.savetxt('history.csv', history, delimiter=',')
+np.savetxt('loss.csv', history.history['loss'], delimiter=',')
+np.savetxt('val_loss.csv', history.history['val_loss'], delimiter=',')
 # scores = model.evaluate(X_test, Y_test, verbose=0)
 scores = model.evaluate(test_data[:, 41:43], test_data[:, 84:86], verbose=0)
 
