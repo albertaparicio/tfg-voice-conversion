@@ -84,12 +84,18 @@ trg_train_frames = train_data[0:17500, 84:86]  # Target data
 src_valid_frames = train_data[17500:train_data.shape[0], 41:43]  # Source data
 trg_valid_frames = train_data[17500:train_data.shape[0], 84:86]  # Target data
 
-# Remove means
-src_train_frames[:, 0] = src_train_frames[:, 0] - np.mean(src_train_frames[:, 0], axis=0)
-trg_train_frames[:, 0] = trg_train_frames[:, 0] - np.mean(trg_train_frames[:, 0], axis=0)
+# Remove means and normalize
+src_train_frames[:, 0] = (src_train_frames[:, 0] - np.mean(src_train_frames[:, 0], axis=0)) / np.std(
+    src_train_frames[:, 0], axis=0)
+trg_train_frames[:, 0] = (trg_train_frames[:, 0] - np.mean(trg_train_frames[:, 0], axis=0)) / np.std(
+    trg_train_frames[:, 0], axis=0)
 
-src_valid_frames[:, 0] = src_valid_frames[:, 0] - np.mean(src_valid_frames[:, 0], axis=0)
-trg_valid_frames[:, 0] = trg_valid_frames[:, 0] - np.mean(trg_valid_frames[:, 0], axis=0)
+# src_valid_frames[:, 0] = src_valid_frames[:, 0] - np.mean(src_valid_frames[:, 0], axis=0)
+src_valid_frames[:, 0] = (src_valid_frames[:, 0] - np.mean(src_train_frames[:, 0], axis=0)) / np.std(
+    src_train_frames[:, 0], axis=0)
+# trg_valid_frames[:, 0] = trg_valid_frames[:, 0] - np.mean(trg_valid_frames[:, 0], axis=0)
+trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - np.mean(trg_train_frames[:, 0], axis=0)) / np.std(
+    trg_train_frames[:, 0], axis=0)
 
 # TODO Define a fully-connected DNN
 print('Evaluate DNN...')
@@ -119,6 +125,7 @@ history = model.fit(src_train_frames, trg_train_frames, batch_size=batch_size, n
 # plt.savefig('losses.png', bbox_inches='tight')
 # # plt.show()
 
+np.savetxt('epoch.csv', history.epoch, delimiter=',')
 np.savetxt('loss.csv', history.history['loss'], delimiter=',')
 np.savetxt('val_loss.csv', history.history['val_loss'], delimiter=',')
 
