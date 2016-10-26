@@ -10,12 +10,12 @@ This is a test script for initializing and training a fully-connected DNN
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
-import matplotlib.pyplot as plt
 import numpy as np
 from keras.layers import Dense, Dropout
 from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Sequential
-from keras.optimizers import RMSprop
+from keras.optimizers import SGD
+
 # from keras.datasets import mnist
 # from keras.initializations import normal, identity
 # from keras.layers import Activation
@@ -84,41 +84,48 @@ trg_train_frames = train_data[0:17500, 84:86]  # Target data
 src_valid_frames = train_data[17500:train_data.shape[0], 41:43]  # Source data
 trg_valid_frames = train_data[17500:train_data.shape[0], 84:86]  # Target data
 
+# Remove means
+src_train_frames[:, 0] = src_train_frames[:, 0] - np.mean(src_train_frames[:, 0], axis=0)
+trg_train_frames[:, 0] = trg_train_frames[:, 0] - np.mean(trg_train_frames[:, 0], axis=0)
+
+src_valid_frames[:, 0] = src_valid_frames[:, 0] - np.mean(src_valid_frames[:, 0], axis=0)
+trg_valid_frames[:, 0] = trg_valid_frames[:, 0] - np.mean(trg_valid_frames[:, 0], axis=0)
+
 # TODO Define a fully-connected DNN
 print('Evaluate DNN...')
 model = Sequential()
-model.add(Dense(64, input_dim=2, activation='relu'))
+
+model.add(Dense(64, input_dim=2))
 model.add(LeakyReLU(alpha=0.3))
 model.add(Dropout(0.5))
-model.add(Dense(64, activation='relu'))
+
+model.add(Dense(64))
 model.add(LeakyReLU(alpha=0.3))
 model.add(Dropout(0.5))
+
 model.add(Dense(2, activation='linear'))
-# model.add(Activation('softmax'))
-# sgd = SGD(lr=learning_rate, decay=1e-6, momentum=0.9, nesterov=True)
-rmsprop = RMSprop(lr=learning_rate)
-model.compile(loss='mse', optimizer=rmsprop)
+
+sgd = SGD(lr=learning_rate, decay=1e-6, momentum=0.9, clipnorm=10)
+# rmsprop = RMSprop(lr=learning_rate)
+
+model.compile(loss='mse', optimizer=sgd)
 
 history = model.fit(src_train_frames, trg_train_frames, batch_size=batch_size, nb_epoch=nb_epochs,
-          verbose=1, validation_data=(src_valid_frames, trg_valid_frames))
+                    verbose=1, validation_data=(src_valid_frames, trg_valid_frames))
 
-# line, = plt.plot(history.epoch, history.history['loss'], history.epoch, history.history['val_loss'], '--', linewidth=2)
-plt.plot(history.epoch, history.history['loss'], history.epoch, history.history['val_loss'], '--', linewidth=2)
-#
-# dashes = [10, 5, 100, 5]  # 10 points on, 5 off, 100 on, 5 off
-# line.set_dashes(dashes)
-#
-plt.legend(['Training loss', 'Validation loss'])
-plt.grid(b='on')
-plt.savefig('losses.png', bbox_inches='tight')
-# plt.show()
+# plt.plot(history.epoch, history.history['loss'], history.epoch, history.history['val_loss'], '--', linewidth=2)
+# plt.legend(['Training loss', 'Validation loss'])
+# plt.grid(b='on')
+# plt.savefig('losses.png', bbox_inches='tight')
+# # plt.show()
 
 np.savetxt('loss.csv', history.history['loss'], delimiter=',')
 np.savetxt('val_loss.csv', history.history['val_loss'], delimiter=',')
-# scores = model.evaluate(X_test, Y_test, verbose=0)
+
 scores = model.evaluate(test_data[:, 41:43], test_data[:, 84:86], verbose=0)
 
 print(scores)
+
 # TODO Print DNN scores
 # print('IRNN test score:', scores[0])
 # print('IRNN test accuracy:', scores[1])
