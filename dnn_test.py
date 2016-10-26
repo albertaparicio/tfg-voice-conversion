@@ -10,8 +10,10 @@ This is a test script for initializing and training a fully-connected DNN
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import matplotlib.pyplot as plt
 import numpy as np
-from keras.layers import Dense
+from keras.layers import Dense, Dropout
+from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 # from keras.datasets import mnist
@@ -65,7 +67,7 @@ else:
 # TODO adjust sizes and other constants
 batch_size = 300
 # nb_classes = 10
-nb_epochs = 100
+nb_epochs = 1000
 hidden_units = 10
 
 learning_rate = 1e-6
@@ -86,8 +88,12 @@ trg_valid_frames = train_data[17500:train_data.shape[0], 84:86]  # Target data
 print('Evaluate DNN...')
 model = Sequential()
 model.add(Dense(64, input_dim=2, activation='relu'))
+model.add(LeakyReLU(alpha=0.3))
+model.add(Dropout(0.5))
 model.add(Dense(64, activation='relu'))
-model.add(Dense(2, activation='relu'))
+model.add(LeakyReLU(alpha=0.3))
+model.add(Dropout(0.5))
+model.add(Dense(2, activation='linear'))
 # model.add(Activation('softmax'))
 # sgd = SGD(lr=learning_rate, decay=1e-6, momentum=0.9, nesterov=True)
 rmsprop = RMSprop(lr=learning_rate)
@@ -95,11 +101,25 @@ model.compile(loss='mse', optimizer=rmsprop)
 
 history = model.fit(src_train_frames, trg_train_frames, batch_size=batch_size, nb_epoch=nb_epochs,
           verbose=1, validation_data=(src_valid_frames, trg_valid_frames))
+
+# line, = plt.plot(history.epoch, history.history['loss'], history.epoch, history.history['val_loss'], '--', linewidth=2)
+plt.plot(history.epoch, history.history['loss'], history.epoch, history.history['val_loss'], '--', linewidth=2)
+#
+# dashes = [10, 5, 100, 5]  # 10 points on, 5 off, 100 on, 5 off
+# line.set_dashes(dashes)
+#
+plt.legend(['Training loss', 'Validation loss'])
+plt.grid(b='on')
+plt.savefig('losses.png', bbox_inches='tight')
+# plt.show()
+
 np.savetxt('loss.csv', history.history['loss'], delimiter=',')
 np.savetxt('val_loss.csv', history.history['val_loss'], delimiter=',')
 # scores = model.evaluate(X_test, Y_test, verbose=0)
 scores = model.evaluate(test_data[:, 41:43], test_data[:, 84:86], verbose=0)
 
+print(scores)
 # TODO Print DNN scores
-print('IRNN test score:', scores[0])
-print('IRNN test accuracy:', scores[1])
+# print('IRNN test score:', scores[0])
+# print('IRNN test accuracy:', scores[1])
+# exit()
