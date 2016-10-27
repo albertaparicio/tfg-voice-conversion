@@ -85,17 +85,19 @@ src_valid_frames = train_data[17500:train_data.shape[0], 41:43]  # Source data
 trg_valid_frames = train_data[17500:train_data.shape[0], 84:86]  # Target data
 
 # Remove means and normalize
-src_train_frames[:, 0] = (src_train_frames[:, 0] - np.mean(src_train_frames[:, 0], axis=0)) / np.std(
-    src_train_frames[:, 0], axis=0)
-trg_train_frames[:, 0] = (trg_train_frames[:, 0] - np.mean(trg_train_frames[:, 0], axis=0)) / np.std(
-    trg_train_frames[:, 0], axis=0)
+src_train_mean = np.mean(src_train_frames[:, 0], axis=0)
+src_train_std = np.std(src_train_frames[:, 0], axis=0)
+trg_train_mean = np.mean(trg_train_frames[:, 0], axis=0)
+trg_train_std = np.std(trg_train_frames[:, 0], axis=0)
+
+
+src_train_frames[:, 0] = (src_train_frames[:, 0] - src_train_mean) / src_train_std
+trg_train_frames[:, 0] = (trg_train_frames[:, 0] - trg_train_mean) / trg_train_std
 
 # src_valid_frames[:, 0] = src_valid_frames[:, 0] - np.mean(src_valid_frames[:, 0], axis=0)
-src_valid_frames[:, 0] = (src_valid_frames[:, 0] - np.mean(src_train_frames[:, 0], axis=0)) / np.std(
-    src_train_frames[:, 0], axis=0)
+src_valid_frames[:, 0] = (src_valid_frames[:, 0] - src_train_mean) / src_train_std
 # trg_valid_frames[:, 0] = trg_valid_frames[:, 0] - np.mean(trg_valid_frames[:, 0], axis=0)
-trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - np.mean(trg_train_frames[:, 0], axis=0)) / np.std(
-    trg_train_frames[:, 0], axis=0)
+trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
 
 # TODO Define a fully-connected DNN
 print('Evaluate DNN...')
