@@ -1,10 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
 ### DNN Training files
-epoch.csv
-loss.csv
-losses.png
-rmse.csv
-val_loss.csv
+*.csv
+*.png
 
 ### Windows template
 # Windows image file caches

@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+# TODO General code cleanup
+
 epoch = np.loadtxt('epoch.csv', delimiter=',')
 loss = np.loadtxt('loss.csv', delimiter=',')
 val_loss = np.loadtxt('val_loss.csv', delimiter=',')

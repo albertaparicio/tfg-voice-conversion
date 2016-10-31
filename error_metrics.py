@@ -16,7 +16,7 @@ def RMSE(groundtruth, prediction, mask=None):
     groundtruth = np.array(groundtruth, dtype=np.float32)
     prediction = np.array(prediction, dtype=np.float32)
     assert groundtruth.shape == prediction.shape
-    if mask:
+    if mask is not None:
         mask = np.array(mask)
         groundtruth = groundtruth[mask == 1]
         prediction = prediction[mask == 1]
