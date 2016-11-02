@@ -17,11 +17,11 @@ model.layers[3].b = None
 model.layers[6].W = None
 model.layers[6].b = None
 
-src_train_frames_original = np.loadtxt('src_train_frames.csv', delimiter=',')
-src_train_frames = np.loadtxt('src_train_frames_nomean.csv', delimiter=',')
+src_train_frames_original = np.loadtxt('mvf_src_train_frames.csv', delimiter=',')
+src_train_frames = np.loadtxt('mvf_src_train_frames_nomean.csv', delimiter=',')
 
-trg_train_frames_original = np.loadtxt('trg_train_frames.csv', delimiter=',')
-trg_train_frames = np.loadtxt('trg_train_frames_nomean.csv', delimiter=',')
+trg_train_frames_original = np.loadtxt('mvf_trg_train_frames.csv', delimiter=',')
+trg_train_frames = np.loadtxt('mvf_trg_train_frames_nomean.csv', delimiter=',')
 
 src_train_mean = np.mean(src_train_frames_original[:, 0], axis=0)
 src_train_std = np.std(src_train_frames_original[:, 0], axis=0)

@@ -8,7 +8,6 @@ This is a script for initializing and training a fully-connected DNN for MVF map
 """
 
 # TODO General code cleanup
-
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
@@ -74,9 +73,7 @@ else:
 
 # TODO adjust sizes and other constants
 batch_size = 300
-# nb_classes = 10
 nb_epochs = 50
-# nb_epochs = 1000
 
 # learning_rate = 1e-5
 learning_rate = 0.001
@@ -89,8 +86,8 @@ np.random.shuffle(train_data)
 src_train_frames = train_data[0:17500, 41:43]  # Source data
 trg_train_frames = train_data[0:17500, 84:86]  # Target data
 
-np.savetxt('src_train_frames.csv', src_train_frames, delimiter=',')
-np.savetxt('trg_train_frames.csv', trg_train_frames, delimiter=',')
+np.savetxt('mvf_src_train_frames.csv', src_train_frames, delimiter=',')
+np.savetxt('mvf_trg_train_frames.csv', trg_train_frames, delimiter=',')
 
 src_valid_frames = train_data[17500:train_data.shape[0], 41:43]  # Source data
 trg_valid_frames = train_data[17500:train_data.shape[0], 84:86]  # Target data
@@ -109,8 +106,8 @@ src_valid_frames[:, 0] = (src_valid_frames[:, 0] - src_train_mean) / src_train_s
 # trg_valid_frames[:, 0] = trg_valid_frames[:, 0] - np.mean(trg_valid_frames[:, 0], axis=0)
 trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
 
-np.savetxt('src_train_frames_nomean.csv', src_train_frames, delimiter=',')
-np.savetxt('trg_train_frames_nomean.csv', trg_train_frames, delimiter=',')
+np.savetxt('mvf_src_train_frames_nomean.csv', src_train_frames, delimiter=',')
+np.savetxt('mvf_trg_train_frames_nomean.csv', trg_train_frames, delimiter=',')
 # exit()
 # TODO Define a fully-connected DNN
 print('Evaluate DNN...')
