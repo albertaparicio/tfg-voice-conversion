@@ -12,6 +12,7 @@ from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 
 import utils
+from error_metrics import RMSE
 
 # Switch to decide if datatable must be build or can be loaded from a file
 build_datatable = False
@@ -79,24 +80,31 @@ src_valid_frames = np.column_stack(
 trg_valid_frames = np.column_stack(
     (train_data[17500:train_data.shape[0], 83], train_data[17500:train_data.shape[0], 85]))  # Target data
 
+src_test_frames = np.column_stack((test_data[:, 40], test_data[:, 42]))
+trg_test_frames = np.column_stack((test_data[:, 83], test_data[:, 85]))
+
 # Remove means and normalize
 src_train_mean = np.mean(src_train_frames[:, 0], axis=0)
 src_train_std = np.std(src_train_frames[:, 0], axis=0)
 
 src_train_frames[:, 0] = (src_train_frames[:, 0] - src_train_mean) / src_train_std
 src_valid_frames[:, 0] = (src_valid_frames[:, 0] - src_train_mean) / src_train_std
+src_test_frames[:, 0] = (src_test_frames[:, 0] - src_train_mean) / src_train_std
 
 trg_train_mean = np.mean(trg_train_frames[:, 0], axis=0)
 trg_train_std = np.std(trg_train_frames[:, 0], axis=0)
 
 trg_train_frames[:, 0] = (trg_train_frames[:, 0] - trg_train_mean) / trg_train_std
 trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
+# trg_test_frames[:, 0] = (trg_test_frames[:, 0] - trg_train_mean) / trg_train_std
 
 # Zero-pad and reshape data
 src_train_frames = utils.reshape_lstm(src_train_frames, tsteps, data_dim)
 src_valid_frames = utils.reshape_lstm(src_valid_frames, tsteps, data_dim)
+src_test_frames = utils.reshape_lstm(src_test_frames, tsteps, data_dim)
 trg_train_frames = utils.reshape_lstm(trg_train_frames, tsteps, data_dim)
 trg_valid_frames = utils.reshape_lstm(trg_valid_frames, tsteps, data_dim)
+trg_test_frames = utils.reshape_lstm(trg_test_frames, tsteps, data_dim)
 
 # exit()
 
@@ -128,3 +136,15 @@ for i in range(epochs):
 
 print('Saving model')
 model.save('lfo_lstm_model.h5')
+
+print('Predicting')
+prediction_test = model.predict(src_test_frames, batch_size=batch_size)
+
+# De-normalize predicted output
+prediction_test[:, 0] = (prediction_test[:, 0] * trg_train_std) + trg_train_mean
+
+# Compute RMSE of test data
+rmse_test = RMSE(trg_test_frames[:, 0], prediction_test[:, 0], mask=trg_test_frames[:, 1])
+
+# Print resulting RMSE
+print('Test RMSE: ', rmse_test)
