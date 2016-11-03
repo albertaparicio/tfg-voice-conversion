@@ -8,9 +8,12 @@ from __future__ import print_function
 
 import numpy as np
 from keras.layers import LSTM, Dense
+from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 
-# Switch to decide if datatable must be build or can be retrieved
+import utils
+
+# Switch to decide if datatable must be build or can be loaded from a file
 build_datatable = False
 
 print('Starting...')
@@ -52,7 +55,9 @@ else:
     print('done')
 
 # TODO adjust sizes and other constants
-'''Sizes and constants'''
+#######################
+# Sizes and constants #
+#######################
 # Batch shape
 batch_size = 1
 tsteps = 50
@@ -60,10 +65,11 @@ data_dim = 2
 
 # Other constants
 epochs = 25
-# number of elements ahead that are used to make the prediction
-lahead = 1
+lahead = 1  # number of elements ahead that are used to make the prediction
 
-# TODO Prepare data for stateful LSTM RNN
+################
+# Prepare data #
+################
 # Take lfo and U/V flag columns
 src_train_frames = np.column_stack((train_data[0:17500, 40], train_data[0:17500, 42]))  # Source data
 trg_train_frames = np.column_stack((train_data[0:17500, 83], train_data[0:17500, 85]))  # Target data
@@ -76,39 +82,48 @@ trg_valid_frames = np.column_stack(
 # Remove means and normalize
 src_train_mean = np.mean(src_train_frames[:, 0], axis=0)
 src_train_std = np.std(src_train_frames[:, 0], axis=0)
+
 src_train_frames[:, 0] = (src_train_frames[:, 0] - src_train_mean) / src_train_std
 src_valid_frames[:, 0] = (src_valid_frames[:, 0] - src_train_mean) / src_train_std
 
 trg_train_mean = np.mean(trg_train_frames[:, 0], axis=0)
 trg_train_std = np.std(trg_train_frames[:, 0], axis=0)
+
 trg_train_frames[:, 0] = (trg_train_frames[:, 0] - trg_train_mean) / trg_train_std
 trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
 
-exit()
+# Zero-pad and reshape data
+src_train_frames = utils.reshape_lstm(src_train_frames, tsteps, data_dim)
+src_valid_frames = utils.reshape_lstm(src_valid_frames, tsteps, data_dim)
+trg_train_frames = utils.reshape_lstm(trg_train_frames, tsteps, data_dim)
+trg_valid_frames = utils.reshape_lstm(trg_valid_frames, tsteps, data_dim)
 
-# TODO Define a fully-connected DNN
+# exit()
+
+################
+# Define Model #
+################
+# Define an LSTM-based RNN
 print('Creating Model')
 model = Sequential()
 
 model.add(LSTM(100,
                batch_input_shape=(batch_size, tsteps, data_dim),
+               return_sequences=True,
                stateful=True))
-model.add(LSTM(100,
-               batch_input_shape=(batch_size, tsteps, data_dim),
-               stateful=True))
-model.add(Dense(2))
+model.add(TimeDistributed(Dense(2)))
 model.compile(loss='mse', optimizer='rmsprop')
 
 print('Training')
 for i in range(epochs):
     print('Epoch', i, '/', epochs)
-    # TODO Add validation data to 'fit'
     model.fit(src_train_frames,
               trg_train_frames,
               batch_size=batch_size,
               verbose=1,
               nb_epoch=1,
-              shuffle=False)
+              shuffle=False,
+              validation_data=(src_valid_frames, trg_valid_frames))
     model.reset_states()
 
 print('Saving model')
