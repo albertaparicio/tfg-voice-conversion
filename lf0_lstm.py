@@ -106,6 +106,13 @@ trg_train_frames = utils.reshape_lstm(trg_train_frames, tsteps, data_dim)
 trg_valid_frames = utils.reshape_lstm(trg_valid_frames, tsteps, data_dim)
 trg_test_frames = utils.reshape_lstm(trg_test_frames, tsteps, data_dim)
 
+# Save training statistics
+np.savetxt(
+    'lf0_train_stats.csv',
+    np.array([[src_train_mean, src_train_std],[trg_train_mean, trg_train_std]]),
+    delimiter=','
+)
+
 # exit()
 
 ################

@@ -8,6 +8,7 @@ This is a script for initializing and training a fully-connected DNN for MVF map
 """
 
 # TODO General code cleanup
+# TODO Implement context
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
