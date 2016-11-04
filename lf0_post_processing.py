@@ -46,7 +46,7 @@ prediction_test = model.predict(src_test_frames, batch_size=batch_size)
 prediction_test[:, 0] = (prediction_test[:, 0] * trg_train_std) + trg_train_mean
 
 # Compute RMSE of test data
-rmse_test = RMSE(trg_test_frames[:, 0], prediction_test[:, 0], mask=trg_test_frames[:, 1])
+rmse_test = RMSE(np.exp(trg_test_frames[:, 0]), np.exp(prediction_test[:, 0]), mask=trg_test_frames[:, 1])
 
 # Print resulting RMSE
 print('Test RMSE: ', rmse_test)
