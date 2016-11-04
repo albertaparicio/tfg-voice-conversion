@@ -37,10 +37,10 @@ src_test_frames[:, 0] = (src_test_frames[:, 0] - src_train_mean) / src_train_std
 src_test_frames = utils.reshape_lstm(src_test_frames, tsteps, data_dim)
 
 trg_test_frames = np.column_stack((test_data[:, 83], test_data[:, 85]))
-trg_test_frames = utils.reshape_lstm(trg_test_frames, tsteps, data_dim)
 
 print('Predicting')
 prediction_test = model.predict(src_test_frames, batch_size=batch_size)
+prediction_test = prediction_test.reshape(-1, 2)
 
 # De-normalize predicted output
 prediction_test[:, 0] = (prediction_test[:, 0] * trg_train_std) + trg_train_mean
@@ -50,3 +50,5 @@ rmse_test = RMSE(np.exp(trg_test_frames[:, 0]), np.exp(prediction_test[:, 0]), m
 
 # Print resulting RMSE
 print('Test RMSE: ', rmse_test)
+
+# TODO Compute Pearson correlation (scipy.stats.pearsonr) between target and prediction
