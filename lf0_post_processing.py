@@ -7,7 +7,7 @@
 from __future__ import print_function
 
 import numpy as np
-from keras.models import load_model
+from keras.models import model_from_json
 
 import utils
 from error_metrics import RMSE
@@ -18,7 +18,12 @@ tsteps = 50
 data_dim = 2
 
 # Load already trained LSTM-RNN model
-model = load_model('lfo_lstm_model.h5')
+# model = load_model('lfo_lstm_model.h5')
+with open('lf0_model.json', 'r') as model_json:
+    model = model_from_json(model_json.read())
+
+model.load_weights('lf0_weights.h5')
+model.compile(loss='mse', optimizer='rmsprop')
 
 # Load training statistics
 train_stats = np.loadtxt('lf0_train_stats.csv', delimiter=',')
@@ -37,7 +42,7 @@ src_test_frames[:, 0] = (src_test_frames[:, 0] - src_train_mean) / src_train_std
 src_test_frames = utils.reshape_lstm(src_test_frames, tsteps, data_dim)
 
 trg_test_frames = np.column_stack((test_data[:, 83], test_data[:, 85]))
-trg_test_frames = utils.reshape_lstm(trg_test_frames, tsteps, data_dim)
+# trg_test_frames = utils.reshape_lstm(trg_test_frames, tsteps, data_dim)
 
 print('Predicting')
 prediction_test = model.predict(src_test_frames, batch_size=batch_size)

@@ -143,7 +143,11 @@ for i in range(epochs):
     model.reset_states()
 
 print('Saving model')
-model.save('lfo_lstm_model.h5')
+# model.save('lf0_lstm_model.h5')
+model.save_weights('lf0_weights.h5')
+
+with open('lf0_model.json', 'w') as model_json:
+    model_json.write(model.to_json())
 
 print('Predicting')
 prediction_test = model.predict(src_test_frames, batch_size=batch_size)
