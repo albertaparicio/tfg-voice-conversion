@@ -62,5 +62,13 @@ print('Test RMSE: ', rmse_test)
 # TODO Compute Pearson correlation between target and prediction
 # (scipy.stats.pearsonr)
 
+# TODO mask the predicted flags (round, maybe)
+prediction_test[:, 1] = np.round(prediction_test[:, 1])
+
 # Compute Accuracy of U/V flag prediction
-print(AFPR(trg_test_frames[:, 1], prediction_test[:, 1]))
+accuracy = AFPR(trg_test_frames[:, 1], prediction_test[:, 1])
+
+print('Accuracy: ', accuracy[0]*100, '%')
+print('F-measure: ', accuracy[1]*100, '%')
+print('Precision: ', accuracy[2]*100, '%')
+print('Recall: ', accuracy[3]*100, '%')
