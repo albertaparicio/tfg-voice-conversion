@@ -10,7 +10,7 @@ import numpy as np
 from keras.models import model_from_json
 
 import utils
-from error_metrics import RMSE
+from error_metrics import RMSE, AFPR
 
 # Batch shape
 batch_size = 1
@@ -55,3 +55,6 @@ rmse_test = RMSE(np.exp(trg_test_frames[:, 0]), np.exp(prediction_test[:, 0]), m
 
 # Print resulting RMSE
 print('Test RMSE: ', rmse_test)
+
+# Compute Accuracy of U/V flag prediction
+print(AFPR(trg_test_frames[:, 1], prediction_test[:, 1]))
