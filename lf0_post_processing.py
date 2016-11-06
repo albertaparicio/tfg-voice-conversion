@@ -18,7 +18,6 @@ tsteps = 50
 data_dim = 2
 
 # Load already trained LSTM-RNN model
-# model = load_model('lfo_lstm_model.h5')
 with open('lf0_model.json', 'r') as model_json:
     model = model_from_json(model_json.read())
 

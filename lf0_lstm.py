@@ -10,6 +10,7 @@ import numpy as np
 from keras.layers import LSTM, Dense
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
+from keras.optimizers import RMSprop
 
 import utils
 from error_metrics import RMSE
@@ -128,7 +129,9 @@ model.add(LSTM(100,
                return_sequences=True,
                stateful=True))
 model.add(TimeDistributed(Dense(2)))
-model.compile(loss='mse', optimizer='rmsprop')
+
+rmsprop = RMSprop(lr=0.0001)
+model.compile(loss='mse', optimizer=rmsprop)
 
 print('Training')
 for i in range(epochs):
