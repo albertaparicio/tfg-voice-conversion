@@ -11,6 +11,7 @@ from keras.models import model_from_json
 
 import utils
 from error_metrics import RMSE, AFPR
+from scipy.stats import pearsonr
 
 # Batch shape
 batch_size = 1
@@ -32,6 +33,7 @@ src_train_std = train_stats[0, 1]
 trg_train_mean = train_stats[1, 0]
 trg_train_std = train_stats[1, 1]
 
+# Load test data
 print('Loading test datatable...', end='')
 test_data = np.loadtxt('data/test_datatable.csv.gz', delimiter=',')
 print('done')
@@ -42,6 +44,7 @@ src_test_frames = utils.reshape_lstm(src_test_frames, tsteps, data_dim)
 
 trg_test_frames = np.column_stack((test_data[:, 83], test_data[:, 85]))
 
+# Predict data according to model
 print('Predicting')
 prediction_test = model.predict(src_test_frames, batch_size=batch_size)
 prediction_test = prediction_test.reshape(-1, 2)
@@ -49,20 +52,24 @@ prediction_test = prediction_test.reshape(-1, 2)
 # De-normalize predicted output
 prediction_test[:, 0] = (prediction_test[:, 0] * trg_train_std) + trg_train_mean
 
-# Compute RMSE of test data
+# Compute and print RMSE of test data
 rmse_test = RMSE(
     np.exp(trg_test_frames[:, 0]),
     np.exp(prediction_test[:, 0]),
     mask=trg_test_frames[:, 1]
 )
 
-# Print resulting RMSE
 print('Test RMSE: ', rmse_test)
 
-# TODO Compute Pearson correlation between target and prediction
-# (scipy.stats.pearsonr)
+# Compute and print Pearson correlation between target and prediction
+pearson = pearsonr(
+    np.exp(trg_test_frames[:, 0]),
+    np.exp(prediction_test[:, 0])
+)
 
-# TODO mask the predicted flags (round, maybe)
+print('Pearson correlation: ', pearson[0])
+
+# Mask the predicted flags (round, maybe)
 prediction_test[:, 1] = np.round(prediction_test[:, 1])
 
 # Compute Accuracy of U/V flag prediction
