@@ -1,7 +1,7 @@
 # Created by albert aparicio on 04/11/16
 # coding: utf-8
 
-# This script computes the error metrics of the LSTM-RNN model for log(f0) mapping
+# This script computes the error metrics of the LSTM-RNN model for lf0 mapping
 
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
@@ -50,12 +50,17 @@ prediction_test = prediction_test.reshape(-1, 2)
 prediction_test[:, 0] = (prediction_test[:, 0] * trg_train_std) + trg_train_mean
 
 # Compute RMSE of test data
-rmse_test = RMSE(np.exp(trg_test_frames[:, 0]), np.exp(prediction_test[:, 0]), mask=trg_test_frames[:, 1])
+rmse_test = RMSE(
+    np.exp(trg_test_frames[:, 0]),
+    np.exp(prediction_test[:, 0]),
+    mask=trg_test_frames[:, 1]
+)
 
 # Print resulting RMSE
 print('Test RMSE: ', rmse_test)
 
-# TODO Compute Pearson correlation (scipy.stats.pearsonr) between target and prediction
+# TODO Compute Pearson correlation between target and prediction
+# (scipy.stats.pearsonr)
 
 # Compute Accuracy of U/V flag prediction
 print(AFPR(trg_test_frames[:, 1], prediction_test[:, 1]))
