@@ -1,13 +1,13 @@
-# Created by albert aparicio on 31/10/16
+# Created by albert aparicio on 06/11/16
 # coding: utf-8
 
-# This script initializes and trains an LSTM-based RNN for log(f0) mapping
+# This script defines a GRU-RNN to map the cepstral components of the signal
 
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
 import numpy as np
-from keras.layers import LSTM, Dense
+from keras.layers import GRU, Dense
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 from keras.optimizers import RMSprop
@@ -57,7 +57,6 @@ else:
     test_data = np.loadtxt('data/test_datatable.csv.gz', delimiter=',')
     print('done')
 
-# TODO adjust sizes and other constants
 #######################
 # Sizes and constants #
 #######################
@@ -74,25 +73,21 @@ lahead = 1  # number of elements ahead that are used to make the prediction
 ################
 # Prepare data #
 ################
+# Take MCP parameter columns
+src_train_data = train_data
+# TODO Adjust data sizes to be consistent with cepstral parameters
 # Take lfo and U/V flag columns
 src_train_data = np.column_stack(
-    (train_data[0:17500, 40],
-     train_data[0:17500, 42])
-)  # Source data
-
+    (train_data[0:17500, 40], train_data[0:17500, 42]))  # Source data
 trg_train_data = np.column_stack(
-    (train_data[0:17500, 83],
-     train_data[0:17500, 85])
-)  # Target data
+    (train_data[0:17500, 83], train_data[0:17500, 85]))  # Target data
 
 src_valid_data = np.column_stack(
     (train_data[17500:train_data.shape[0], 40],
-     train_data[17500:train_data.shape[0], 42])
-)  # Source data
+     train_data[17500:train_data.shape[0], 42]))  # Source data
 trg_valid_data = np.column_stack(
     (train_data[17500:train_data.shape[0], 83],
-     train_data[17500:train_data.shape[0], 85])
-)  # Target data
+     train_data[17500:train_data.shape[0], 85]))  # Target data
 
 src_test_data = np.column_stack((test_data[:, 40], test_data[:, 42]))
 trg_test_data = np.column_stack((test_data[:, 83], test_data[:, 85]))
@@ -110,7 +105,6 @@ trg_train_std = np.std(trg_train_data[:, 0], axis=0)
 
 trg_train_data[:, 0] = (trg_train_data[:, 0] - trg_train_mean) / trg_train_std
 trg_valid_data[:, 0] = (trg_valid_data[:, 0] - trg_train_mean) / trg_train_std
-# trg_test_data[:, 0] = (trg_test_data[:, 0] - trg_train_mean) / trg_train_std
 
 # Zero-pad and reshape data
 src_train_data = utils.reshape_lstm(src_train_data, tsteps, data_dim)
@@ -136,7 +130,6 @@ np.savetxt(
 # Define Model #
 ################
 # Define an LSTM-based RNN
-# TODO Define 2-output net
 print('Creating Model')
 model = Sequential()
 
