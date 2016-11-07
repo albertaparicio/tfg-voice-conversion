@@ -13,7 +13,7 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 
 import utils
-from error_metrics import RMSE
+from error_metrics import MCD
 
 # Switch to decide if datatable must be build or can be loaded from a file
 build_datatable = False
@@ -63,7 +63,7 @@ else:
 # Batch shape
 batch_size = 1
 tsteps = 50
-data_dim = 2
+data_dim = 40
 
 # Other constants
 epochs = 50
@@ -74,70 +74,63 @@ lahead = 1  # number of elements ahead that are used to make the prediction
 # Prepare data #
 ################
 # Take MCP parameter columns
-src_train_data = train_data
-# TODO Adjust data sizes to be consistent with cepstral parameters
-# Take lfo and U/V flag columns
-src_train_data = np.column_stack(
-    (train_data[0:17500, 40], train_data[0:17500, 42]))  # Source data
-trg_train_data = np.column_stack(
-    (train_data[0:17500, 83], train_data[0:17500, 85]))  # Target data
+src_train_data = train_data[0:17500, 0:40]  # Source data
+trg_train_data = train_data[0:17500, 43:83]  # Target data
 
-src_valid_data = np.column_stack(
-    (train_data[17500:train_data.shape[0], 40],
-     train_data[17500:train_data.shape[0], 42]))  # Source data
-trg_valid_data = np.column_stack(
-    (train_data[17500:train_data.shape[0], 83],
-     train_data[17500:train_data.shape[0], 85]))  # Target data
+src_valid_data = train_data[17500:train_data.shape[0], 0:40]  # Source data
+trg_valid_data = train_data[17500:train_data.shape[0], 43:83]  # Target data
 
-src_test_data = np.column_stack((test_data[:, 40], test_data[:, 42]))
-trg_test_data = np.column_stack((test_data[:, 83], test_data[:, 85]))
+src_test_data = test_data[:, 0:40]  # Source data
+trg_test_data = test_data[:, 43:83]  # Target data
 
 # Remove means and normalize
-src_train_mean = np.mean(src_train_data[:, 0], axis=0)
-src_train_std = np.std(src_train_data[:, 0], axis=0)
+src_train_mean = np.mean(src_train_data, axis=0)
+src_train_std = np.std(src_train_data, axis=0)
 
-src_train_data[:, 0] = (src_train_data[:, 0] - src_train_mean) / src_train_std
-src_valid_data[:, 0] = (src_valid_data[:, 0] - src_train_mean) / src_train_std
-src_test_data[:, 0] = (src_test_data[:, 0] - src_train_mean) / src_train_std
+src_train_data = (src_train_data - src_train_mean) / src_train_std
+src_valid_data = (src_valid_data - src_train_mean) / src_train_std
+src_test_data = (src_test_data - src_train_mean) / src_train_std
 
-trg_train_mean = np.mean(trg_train_data[:, 0], axis=0)
-trg_train_std = np.std(trg_train_data[:, 0], axis=0)
+trg_train_mean = np.mean(trg_train_data, axis=0)
+trg_train_std = np.std(trg_train_data, axis=0)
 
-trg_train_data[:, 0] = (trg_train_data[:, 0] - trg_train_mean) / trg_train_std
-trg_valid_data[:, 0] = (trg_valid_data[:, 0] - trg_train_mean) / trg_train_std
+trg_train_data = (trg_train_data - trg_train_mean) / trg_train_std
+trg_valid_data = (trg_valid_data - trg_train_mean) / trg_train_std
 
 # Zero-pad and reshape data
 src_train_data = utils.reshape_lstm(src_train_data, tsteps, data_dim)
 src_valid_data = utils.reshape_lstm(src_valid_data, tsteps, data_dim)
 src_test_data = utils.reshape_lstm(src_test_data, tsteps, data_dim)
+
 trg_train_data = utils.reshape_lstm(trg_train_data, tsteps, data_dim)
 trg_valid_data = utils.reshape_lstm(trg_valid_data, tsteps, data_dim)
-trg_test_data = utils.reshape_lstm(trg_test_data, tsteps, data_dim)
+# trg_test_data = utils.reshape_lstm(trg_test_data, tsteps, data_dim)
 
 # Save training statistics
-np.savetxt(
-    'lf0_train_stats.csv',
-    np.array(
-        [[src_train_mean, src_train_std],
-         [trg_train_mean, trg_train_std]]
-    ),
-    delimiter=','
-)
+# TODO migrate to h5py
+# np.savetxt(
+#     'mcp_train_stats.csv',
+#     np.array(
+#         [[src_train_mean, src_train_std],
+#          [trg_train_mean, trg_train_std]]
+#     ),
+#     delimiter=','
+# )
 
 # exit()
 
 ################
 # Define Model #
 ################
-# Define an LSTM-based RNN
+# Define an GRU-based RNN
 print('Creating Model')
 model = Sequential()
 
-model.add(LSTM(100,
-               batch_input_shape=(batch_size, tsteps, data_dim),
-               return_sequences=True,
-               stateful=True))
-model.add(TimeDistributed(Dense(2)))
+model.add(GRU(100,
+              batch_input_shape=(batch_size, tsteps, data_dim),
+              return_sequences=True,
+              stateful=True))
+model.add(TimeDistributed(Dense(data_dim)))
 
 rmsprop = RMSprop(lr=0.0001)
 model.compile(loss='mse', optimizer=rmsprop)
@@ -155,24 +148,23 @@ for i in range(epochs):
     model.reset_states()
 
 print('Saving model')
-# model.save('lf0_lstm_model.h5')
-model.save_weights('lf0_weights.h5')
+model.save_weights('mcp_weights.h5')
 
-with open('lf0_model.json', 'w') as model_json:
+with open('mcp_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
 print('Predicting')
 prediction_test = model.predict(src_test_data, batch_size=batch_size)
+prediction_test = prediction_test.reshape(-1, data_dim)
 
 # De-normalize predicted output
-prediction_test[:, 0] = (prediction_test[:, 0] * trg_train_std) + trg_train_mean
+prediction_test = (prediction_test * trg_train_std) + trg_train_mean
 
 # Compute RMSE of test data
-rmse_test = RMSE(
-    np.exp(trg_test_data[:, 0]),
-    np.exp(prediction_test[:, 0]),
-    mask=trg_test_data[:, 1]
+mcd_test = MCD(
+    trg_test_data,
+    prediction_test
 )
 
 # Print resulting RMSE
-print('Test RMSE: ', rmse_test)
+print('Test MCD: ', mcd_test)
