@@ -107,14 +107,14 @@ trg_valid_data = utils.reshape_lstm(trg_valid_data, tsteps, data_dim)
 
 # Save training statistics
 # TODO migrate to h5py
-# np.savetxt(
-#     'mcp_train_stats.csv',
-#     np.array(
-#         [[src_train_mean, src_train_std],
-#          [trg_train_mean, trg_train_std]]
-#     ),
-#     delimiter=','
-# )
+np.savetxt(
+    'mcp_train_stats.csv',
+    np.array(
+        [[src_train_mean, src_train_std],
+         [trg_train_mean, trg_train_std]]
+    ),
+    delimiter=','
+)
 
 # exit()
 
