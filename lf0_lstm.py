@@ -6,58 +6,16 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import h5py
 import numpy as np
 from keras.layers import LSTM, Dense
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 
+import construct_table as ct
 import utils
-from error_metrics import RMSE
 
-# Switch to decide if datatable must be build or can be loaded from a file
-build_datatable = False
-
-print('Starting...')
-
-if build_datatable:
-    import construct_table as ct
-
-    # Build datatable of the training data
-    # (data is already encoded with Ahocoder)
-    print('Saving training datatable...', end='')
-    train_data = ct.construct_datatable(
-        'data/training/basenames.list',
-        'data/training/vocoded/SF1/',
-        'data/training/vocoded/TF1/',
-        'data/training/frames/'
-    )
-    # Save and compress with .gz to save space (approx 4x smaller file)
-    np.savetxt('data/train_datatable.csv.gz', train_data, delimiter=',')
-    print('done')
-
-    # Build datatable of the test data (data is already encoded with Ahocoder)
-    print('Saving test datatable...', end='')
-    test_data = ct.construct_datatable(
-        'data/test/basenames.list',
-        'data/test/vocoded/SF1/',
-        'data/test/vocoded/TF1/',
-        'data/test/frames/'
-    )
-    # Save and compress with .gz to save space (approx 4x smaller file)
-    np.savetxt('data/test_datatable.csv.gz', test_data, delimiter=',')
-    print('done')
-
-else:
-    # Retrieve datatable from .csv.gz file
-    print('Loading training datatable...', end='')
-    train_data = np.loadtxt('data/train_datatable.csv.gz', delimiter=',')
-    print('done')
-    print('Loading test datatable...', end='')
-    test_data = np.loadtxt('data/test_datatable.csv.gz', delimiter=',')
-    print('done')
-
-# TODO adjust sizes and other constants
 #######################
 # Sizes and constants #
 #######################
@@ -68,8 +26,50 @@ data_dim = 2
 
 # Other constants
 epochs = 50
-# epochs = 25
 lahead = 1  # number of elements ahead that are used to make the prediction
+
+#############
+# Load data #
+#############
+# Switch to decide if datatable must be build or can be loaded from a file
+build_datatable = False
+
+print('Starting...')
+
+if build_datatable:
+    # Build datatable of training and test data
+    # (data is already encoded with Ahocoder)
+    print('Saving training datatable...', end='')
+    ct.save_datatable(
+        'data/training/',
+        'train_data',
+        'data/train_datatable'
+    )
+    print('done')
+
+    print('Saving test datatable...', end='')
+    ct.save_datatable(
+        'data/test/',
+        'test_data',
+        'data/test_datatable'
+    )
+    print('done')
+
+else:
+    # Retrieve datatables from .h5 files
+    print('Loading training datatable...', end='')
+    train_data = ct.load_datatable(
+        'data/train_datatable.h5',
+        'train_data'
+    )
+    print('done')
+
+    print('Loading test datatable...', end='')
+    test_data = ct.load_datatable(
+        'data/test_datatable.h5',
+        'test_data'
+    )
+    print('done')
 
 ################
 # Prepare data #
@@ -121,14 +121,13 @@ trg_valid_data = utils.reshape_lstm(trg_valid_data, tsteps, data_dim)
 trg_test_data = utils.reshape_lstm(trg_test_data, tsteps, data_dim)
 
 # Save training statistics
-np.savetxt(
-    'lf0_train_stats.csv',
-    np.array(
-        [[src_train_mean, src_train_std],
-         [trg_train_mean, trg_train_std]]
-    ),
-    delimiter=','
-)
+with h5py.File('lf0_train_stats.h5', 'w') as f:
+    h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
+    h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
+    h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
+    h5_trg_train_std = f.create_dataset("trg_train_std", data=trg_train_std)
+
+    f.close()
 
 # exit()
 
@@ -149,6 +148,9 @@ model.add(TimeDistributed(Dense(2)))
 rmsprop = RMSprop(lr=0.0001)
 model.compile(loss='mse', optimizer=rmsprop)
 
+###############
+# Train model #
+###############
 print('Training')
 for i in range(epochs):
     print('Epoch', i, '/', epochs)
@@ -162,24 +164,14 @@ for i in range(epochs):
     model.reset_states()
 
 print('Saving model')
-# model.save('lf0_lstm_model.h5')
 model.save_weights('lf0_weights.h5')
 
 with open('lf0_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
-print('Predicting')
-prediction_test = model.predict(src_test_data, batch_size=batch_size)
-
-# De-normalize predicted output
-prediction_test[:, 0] = (prediction_test[:, 0] * trg_train_std) + trg_train_mean
-
-# Compute RMSE of test data
-rmse_test = RMSE(
-    np.exp(trg_test_data[:, 0]),
-    np.exp(prediction_test[:, 0]),
-    mask=trg_test_data[:, 1]
-)
-
-# Print resulting RMSE
-print('Test RMSE: ', rmse_test)
+print('========================' +
+      '\n' +
+      '======= FINISHED =======' +
+      '\n' +
+      '========================'
+      )

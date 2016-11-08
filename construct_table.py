@@ -4,6 +4,7 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import h5py
 import numpy as np
 
 from utils import kronecker_delta
@@ -139,12 +140,42 @@ def construct_datatable(basenames_list, source_dir, target_dir, dtw_dir):
     # Return result
     return datatable
 
-# TODO investigate the best way to store the datatable in a file
-# np.savetxt('datatable.csv', file_datatable, delimiter=',')
-#
-# file_datatable = construct_datatable('basenames.list', 'vocoded/SF1/', 'vocoded/TF1/', 'frames/')
-#
-# # Compress with .gz to save space (aprox 4x smaller file)
-# np.savetxt('datatable.csv.gz', file_datatable, delimiter=',')
-#
-# exit()
+
+def save_datatable(data_dir, dataset_name, datatable_out_file):
+    """This function constructs and saves the datatable in an .h5 file
+
+    INPUTS:
+        data_dir: directory of the data to be used in the datatable. This path must end in a '/'
+        dataset_name: name of the dataset in the .h5 file
+        datatable_out_file: path to the output .h5 file (no extension)
+
+    OUTPUTS: None. The only output is the .h5 file of the datatable"""
+    # Construct datatable
+    data = construct_datatable(
+        data_dir + 'basenames.list',
+        data_dir + 'vocoded/SF1/',
+        data_dir + 'vocoded/TF1/',
+        data_dir + 'frames/'
+    )
+
+    # Save and compress with gzip to save space
+    with h5py.File(datatable_out_file + '.h5', 'w') as f:
+        f.create_dataset(dataset_name, data=data, compression="gzip", compression_opts=9)
+
+        f.close()
+
+
+def load_datatable(datatable_file, dataset_name):
+    """This function loads a datatable from a previously saved file
+
+    INPUTS:
+        datatable_file: path to the datatable .h5 file
+        dataset_name: name of the dataset to retrieve from the .h5 file
+
+    OUTPUT: a NumPy.ndarray with the datatable"""
+    with h5py.File(datatable_file, 'r') as file:
+        dataset = file[dataset_name][:, :]
+
+        file.close()
+
+    return dataset

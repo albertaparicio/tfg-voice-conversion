@@ -13,49 +13,8 @@ from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 
+import construct_table as ct
 import utils
-
-# Switch to decide if datatable must be build or can be loaded from a file
-build_datatable = False
-
-print('Starting...')
-
-if build_datatable:
-    import construct_table as ct
-
-    # Build datatable of the training data
-    # (data is already encoded with Ahocoder)
-    print('Saving training datatable...', end='')
-    train_data = ct.construct_datatable(
-        'data/training/basenames.list',
-        'data/training/vocoded/SF1/',
-        'data/training/vocoded/TF1/',
-        'data/training/frames/'
-    )
-    # Save and compress with .gz to save space (approx 4x smaller file)
-    np.savetxt('data/train_datatable.csv.gz', train_data, delimiter=',')
-    print('done')
-
-    # Build datatable of the test data (data is already encoded with Ahocoder)
-    print('Saving test datatable...', end='')
-    test_data = ct.construct_datatable(
-        'data/test/basenames.list',
-        'data/test/vocoded/SF1/',
-        'data/test/vocoded/TF1/',
-        'data/test/frames/'
-    )
-    # Save and compress with .gz to save space (approx 4x smaller file)
-    np.savetxt('data/test_datatable.csv.gz', test_data, delimiter=',')
-    print('done')
-
-else:
-    # Retrieve datatable from .csv.gz file
-    print('Loading training datatable...', end='')
-    train_data = np.loadtxt('data/train_datatable.csv.gz', delimiter=',')
-    print('done')
-    print('Loading test datatable...', end='')
-    test_data = np.loadtxt('data/test_datatable.csv.gz', delimiter=',')
-    print('done')
 
 #######################
 # Sizes and constants #
@@ -69,6 +28,49 @@ data_dim = 40
 epochs = 50
 # epochs = 25
 lahead = 1  # number of elements ahead that are used to make the prediction
+
+#############
+# Load data #
+#############
+#  Switch to decide if datatable must be build or can be loaded from a file
+build_datatable = False
+
+print('Starting...')
+
+if build_datatable:
+    # Build datatable of training and test data
+    # (data is already encoded with Ahocoder)
+    print('Saving training datatable...', end='')
+    ct.save_datatable(
+        'data/training/',
+        'train_data',
+        'data/train_datatable'
+    )
+    print('done')
+
+    print('Saving test datatable...', end='')
+    ct.save_datatable(
+        'data/test/',
+        'test_data',
+        'data/test_datatable'
+    )
+    print('done')
+
+else:
+    # Retrieve datatables from .h5 files
+    print('Loading training datatable...', end='')
+    train_data = ct.load_datatable(
+        'data/train_datatable.h5',
+        'train_data'
+    )
+    print('done')
+
+    print('Loading test datatable...', end='')
+    test_data = ct.load_datatable(
+        'data/test_datatable.h5',
+        'test_data'
+    )
+    print('done')
 
 ################
 # Prepare data #
@@ -104,7 +106,6 @@ src_test_data = utils.reshape_lstm(src_test_data, tsteps, data_dim)
 
 trg_train_data = utils.reshape_lstm(trg_train_data, tsteps, data_dim)
 trg_valid_data = utils.reshape_lstm(trg_valid_data, tsteps, data_dim)
-# trg_test_data = utils.reshape_lstm(trg_test_data, tsteps, data_dim)
 
 # Save training statistics
 with h5py.File('mcp_train_stats.h5', 'w') as f:
@@ -133,6 +134,9 @@ model.add(TimeDistributed(Dense(data_dim)))
 rmsprop = RMSprop(lr=0.0001)
 model.compile(loss='mse', optimizer=rmsprop)
 
+###############
+# Train model #
+###############
 print('Training')
 for i in range(epochs):
     print('Epoch', i, '/', epochs)
