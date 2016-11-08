@@ -6,6 +6,7 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import h5py
 import numpy as np
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
@@ -29,13 +30,13 @@ rmsprop = RMSprop(lr=0.0001)
 model.compile(loss='mse', optimizer=rmsprop)
 
 # Load training statistics
-train_stats = np.loadtxt('mcp_train_stats.csv', delimiter=',')
+with h5py.File('mcp_train_stats.h5', 'r') as train_stats:
+    src_train_mean = train_stats['src_train_mean'][:]
+    src_train_std = train_stats['src_train_std'][:]
+    trg_train_mean = train_stats['trg_train_mean'][:]
+    trg_train_std = train_stats['trg_train_std'][:]
 
-src_train_mean = train_stats[0, 0]
-src_train_std = train_stats[0, 1]
-trg_train_mean = train_stats[1, 0]
-trg_train_std = train_stats[1, 1]
-print('done')
+    train_stats.close()
 
 # Load test data
 print('Loading test data...', end='')

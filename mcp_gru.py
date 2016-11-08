@@ -6,6 +6,7 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import h5py
 import numpy as np
 from keras.layers import GRU, Dense
 from keras.layers.wrappers import TimeDistributed
@@ -106,15 +107,13 @@ trg_valid_data = utils.reshape_lstm(trg_valid_data, tsteps, data_dim)
 # trg_test_data = utils.reshape_lstm(trg_test_data, tsteps, data_dim)
 
 # Save training statistics
-# TODO migrate to h5py
-np.savetxt(
-    'mcp_train_stats.csv',
-    np.array(
-        [[src_train_mean, src_train_std],
-         [trg_train_mean, trg_train_std]]
-    ),
-    delimiter=','
-)
+with h5py.File('mcp_train_stats.h5', 'w') as f:
+    h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
+    h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
+    h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
+    h5_trg_train_std = f.create_dataset("trg_train_std", data=trg_train_std)
+
+    f.close()
 
 # exit()
 
