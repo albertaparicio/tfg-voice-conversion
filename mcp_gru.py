@@ -13,7 +13,6 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 
 import utils
-from error_metrics import MCD
 
 # Switch to decide if datatable must be build or can be loaded from a file
 build_datatable = False
@@ -153,18 +152,9 @@ model.save_weights('mcp_weights.h5')
 with open('mcp_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
-print('Predicting')
-prediction_test = model.predict(src_test_data, batch_size=batch_size)
-prediction_test = prediction_test.reshape(-1, data_dim)
-
-# De-normalize predicted output
-prediction_test = (prediction_test * trg_train_std) + trg_train_mean
-
-# Compute RMSE of test data
-mcd_test = MCD(
-    trg_test_data,
-    prediction_test
-)
-
-# Print resulting RMSE
-print('Test MCD: ', mcd_test)
+print('========================' +
+      '\n' +
+      '======= FINISHED =======' +
+      '\n' +
+      '========================'
+      )
