@@ -35,10 +35,10 @@ model.compile(loss='mae', optimizer=rmsprop)
 #############
 # Load training statistics
 with h5py.File('mvf_train_stats.h5', 'r') as train_stats:
-    src_train_mean = train_stats['src_train_mean'][:]
-    src_train_std = train_stats['src_train_std'][:]
-    trg_train_mean = train_stats['trg_train_mean'][:]
-    trg_train_std = train_stats['trg_train_std'][:]
+    src_train_mean = train_stats['src_train_mean'].value
+    src_train_std = train_stats['src_train_std'].value
+    trg_train_mean = train_stats['trg_train_mean'].value
+    trg_train_std = train_stats['trg_train_std'].value
 
     train_stats.close()
 
