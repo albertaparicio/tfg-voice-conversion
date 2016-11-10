@@ -4,14 +4,16 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
-import numpy as np
-import h5py
+import os
+import subprocess
 
+import h5py
+import numpy as np
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
 
-from construct_table import parse_file
 import utils
+from construct_table import parse_file
 
 ###############
 # Load models #
@@ -121,33 +123,44 @@ for basename in basenames:
     mcp_params = utils.reshape_lstm(mcp_params, mcp_tsteps, mcp_data_dim)
 
     lf0_params = (lf0_params - src_lf0_mean) / src_lf0_std
-    lf0_params = utils.reshape_lstm(lf0_params, lf0_tsteps, lf0_data_dim)
+    lf0_params = utils.reshape_lstm(np.column_stack((lf0_params, uv_flags)), lf0_tsteps, lf0_data_dim)
 
     mvf_params = (mvf_params - src_mvf_mean) / src_mvf_std
-
     ######################
     # Predict parameters #
     ######################
-    mvf_prediction = mvf_model.predict(np.column_stack(mvf_params, uv_flags))
+    mvf_prediction = mvf_model.predict(np.column_stack((mvf_params, uv_flags)))
     mvf_prediction[:, 0] = (mvf_prediction[:, 0] * trg_mvf_std) + trg_mvf_mean
 
     lf0_prediction = lf0_model.predict(lf0_params, batch_size=lf0_batch_size)
     lf0_prediction = lf0_prediction.reshape(-1, 2)
+    # Undo the zero-padding
+    lf0_prediction = lf0_prediction[0:mvf_prediction.shape[0], 0:lf0_prediction.shape[1]]
     lf0_prediction[:, 0] = (lf0_prediction[:, 0] * trg_lf0_std) + trg_lf0_mean
 
     mcp_prediction = mcp_model.predict(mcp_params, batch_size=mcp_batch_size)
     mcp_prediction = mcp_prediction.reshape(-1, mcp_data_dim)
+    # Undo the zero-padding
+    mcp_prediction = mcp_prediction[0:mvf_prediction.shape[0], 0:mcp_prediction.shape[1]]
     mcp_prediction = (mcp_prediction * trg_mcp_std) + trg_mcp_mean
+
+    # Round U/V predictions
+    lf0_prediction[:, 1] = np.round(lf0_prediction[:, 1])
+    mvf_prediction[:, 1] = np.round(mvf_prediction[:, 1])
 
     # Apply U/V flag to mvf and lf0 data
     for index, entry in enumerate(lf0_prediction):
         if entry[1] == 0:
             lf0_prediction[index, 0] = -1e+10
+
+    for index, entry in enumerate(mvf_prediction):
+        if entry[1] == 0:
             mvf_prediction[index, 0] = 0
 
     ###########################
     # Save parameters to file #
     ###########################
+    # TODO Make the code save these files
     np.savetxt(
         'data/test/predicted/SF1-TF1/' + basename + '.vf.dat',
         mvf_prediction[:, 0]
@@ -162,11 +175,16 @@ for basename in basenames:
         delimiter='\t'
     )
 
-    #####################
-    # Decode parameters #
-    #####################
-    # TODO call ahodecoder16_64
-    import os
-    f = os.popen(
-        "bash decode_aho.sh 'data/test/predicted/SF1-TF1/' " + basename
-    )
+    # #####################
+    # # Decode parameters #
+    # #####################
+    # os.popen('mkdir -p data/test/predicted/SF1-TF1')
+    #
+    # # TODO Make the execution use the system's $PATH
+    # # f = os.popen('echo $PATH')
+    # # print(f.read())
+    # subprocess.check_output(['echo', '$PATH'])
+    #
+    # # f = os.popen(
+    # #     "bash decode_aho.sh 'data/test/predicted/SF1-TF1/' " + basename
+    # # )
