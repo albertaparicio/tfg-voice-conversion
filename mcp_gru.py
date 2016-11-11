@@ -8,7 +8,7 @@ from __future__ import print_function
 
 import h5py
 import numpy as np
-from keras.layers import GRU, Dense
+from keras.layers import GRU, Dense, Dropout
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 from keras.optimizers import RMSprop
@@ -125,10 +125,11 @@ with h5py.File('mcp_train_stats.h5', 'w') as f:
 print('Creating Model')
 model = Sequential()
 
-model.add(GRU(100,
+model.add(GRU(70,
               batch_input_shape=(batch_size, tsteps, data_dim),
               return_sequences=True,
               stateful=True))
+model.add(Dropout(0.5))
 model.add(TimeDistributed(Dense(data_dim)))
 
 rmsprop = RMSprop(lr=0.0001)
