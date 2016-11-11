@@ -32,8 +32,11 @@ def apply_context(input_matrix, context_size):
         - Input matrix of Nx1 elements"""
     assert input_matrix.shape[0] == input_matrix.size
 
+    # Reshape into (N,1) array, avoiding shapes like (N,)
+    input_matrix = input_matrix.reshape((-1, 1))
+
     # Replicate matrix 'context_size' times
-    replicated = np.transpose(np.tile(input_matrix, (2 * context_size + 1, 1)))
+    replicated = input_matrix.repeat(2 * context_size + 1, axis=1)
 
     # Roll context elements
     for i in np.arange(0, 2 * context_size + 1):

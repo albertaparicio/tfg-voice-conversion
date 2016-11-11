@@ -2,6 +2,7 @@
 ### DNN Training files
 *.csv
 *.png
+./data/test/predicted
 
 ### Windows template
 # Windows image file caches
