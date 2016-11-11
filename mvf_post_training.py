@@ -5,11 +5,13 @@
 from __future__ import print_function
 
 import h5py
+import numpy as np
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
 from matplotlib import pyplot as plt
 
 from error_metrics import RMSE
+from utils import apply_context
 
 #######################
 # Sizes and constants #
@@ -17,6 +19,7 @@ from error_metrics import RMSE
 batch_size = 300
 nb_epochs = 50
 learning_rate = 0.001
+context_size = 1
 
 ##############
 # Load model #
@@ -53,13 +56,18 @@ src_test_data = test_data[:, 41:43]  # Source data
 src_test_data[:, 0] = (src_test_data[:, 0] - src_train_mean) / src_train_std
 
 trg_test_data = test_data[:, 84:86]  # Target data
+
+# Apply context
+src_test_data_context = np.column_stack((
+    apply_context(src_test_data[:, 0], context_size), src_test_data[:, 1]
+))
 print('done')
 
 ################
 # Predict data #
 ################
 print('Predicting')
-prediction = model.predict(src_test_data)
+prediction = model.predict(src_test_data_context)
 
 # De-normalize predicted output
 prediction[:, 0] = (prediction[:, 0] * trg_train_std) + trg_train_mean
