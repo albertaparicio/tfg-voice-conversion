@@ -65,6 +65,7 @@ while read FILENAME <&3; do
     interpolate.py --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
 
     # Apply dynamic time warping
+    # TODO desar el score del DTW per a valorar si funciona bé o no
     dtw -l 40 -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null
 
     # Convert frames file to ASCII format
