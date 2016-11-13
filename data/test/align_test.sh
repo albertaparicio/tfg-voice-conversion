@@ -65,10 +65,11 @@ while read FILENAME <&3; do
     interpolate.py --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
 
     # Apply dynamic time warping
-    dtw -l 40 -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null
+    dtw -l 40 -s ${DIR_FRM}/${FILENAME}.score -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null
 
-    # Convert frames file to ASCII format
+    # Convert frames and scores file to ASCII format
     x2x +ia ${DIR_FRM}/${FILENAME}.frames | do_columns.pl -c 2 > ${DIR_FRM}/${FILENAME}.frames.txt
+    x2x +fa ${DIR_FRM}/${FILENAME}.score > ${DIR_FRM}/${FILENAME}.dtw_score
 
     # Remove binary files
     rm ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0
@@ -80,6 +81,7 @@ while read FILENAME <&3; do
     rm ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf
 
     rm ${DIR_FRM}/${FILENAME}.frames
+    rm ${DIR_FRM}/${FILENAME}.score
 done 3< basenames.list
 
 # Set End time of execution
