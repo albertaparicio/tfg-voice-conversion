@@ -19,7 +19,7 @@ ZASKA="Zaska  -P $PRM_NAME $PRM_OPT"
 $ZASKA -t RAW -x wav=msw -n . -p mfcc -F $DIR_REF/$FILENAME $DIR_TST/$FILENAME
 
 # Align: mfcc/$DIR_REF/$FILENAME.prm, mfcc/$DIR_TST/$FILENAME.prm => dtw/${DIR_REF}-$DIR_TST/$FILENAME.dtw
-dtw -t mfcc/$DIR_REF -r mfcc/$DIR_TST -a dtw/${DIR_REF}-$DIR_TST  -w -F $FILENAME
+upc_dtw -t mfcc/$DIR_REF -r mfcc/$DIR_TST -a dtw/${DIR_REF}-$DIR_TST  -w -F $FILENAME
 
 
 
