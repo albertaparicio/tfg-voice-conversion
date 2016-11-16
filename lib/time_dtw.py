@@ -8,7 +8,7 @@
 # argument
 
 import numpy as np
-from construct_table import parse_file
+from tfglib.construct_table import parse_file
 from sys import argv
 
 # Check that a file parameter has been passed

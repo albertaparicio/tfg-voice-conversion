@@ -7,7 +7,7 @@ from __future__ import print_function
 import h5py
 import numpy as np
 
-from utils import kronecker_delta
+from tfglib.utils import kronecker_delta
 
 
 def parse_file(param_len, file_path):

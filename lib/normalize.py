@@ -6,12 +6,10 @@
 
 from __future__ import print_function
 
-import argparse
-import os
 from sys import argv, exit
 
 import numpy as np
-from construct_table import parse_file
+from tfglib.construct_table import parse_file
 
 # Define usage constant
 usage = 'Usage: normalize.py [file_directory] [filename]' + \
@@ -23,7 +21,7 @@ if len(argv) == 1 or \
 
 elif len(argv) == 4:
     # Parse input file
-    data = parse_file(argv[3], argv[1] + argv[2])
+    data = parse_file(int(argv[3]), argv[1] + argv[2])
 
     # Normalize data
     data_mean = np.mean(data, axis=0)
@@ -32,7 +30,7 @@ elif len(argv) == 4:
     normalized_data = (data - data_mean) / data_std
 
     # Output normalized data to file
-    np.savetxt(argv[1] + argv[2] + '.norm', normalized_data[:, 1:normalized_data.size[1]], fmt='%.18f', delimiter='\t')
+    np.savetxt(argv[1] + argv[2] + '.norm', normalized_data[:, 1:normalized_data.shape[1]], fmt='%.18f', delimiter='\t')
 
 else:
     exit('Please, input two arguments as indicated in the usage.\n\n' + usage)
