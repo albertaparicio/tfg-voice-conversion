@@ -9,8 +9,8 @@ import numpy as np
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
 
-import utils
-from construct_table import parse_file
+from tfglib import utils
+from tfglib.construct_table import parse_file
 
 ###############
 # Load models #

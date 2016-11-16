@@ -11,8 +11,8 @@ import numpy as np
 from keras.models import model_from_json
 from scipy.stats import pearsonr
 
-import utils
-from error_metrics import RMSE, AFPR
+from tfglib import utils
+from ahoproc_tools.error_metrics import RMSE, AFPR
 
 #######################
 # Sizes and constants #

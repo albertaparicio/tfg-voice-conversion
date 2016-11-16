@@ -13,8 +13,8 @@ from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 
-import construct_table as ct
-import utils
+from tfglib import construct_table as ct
+from tfglib import utils
 
 #######################
 # Sizes and constants #

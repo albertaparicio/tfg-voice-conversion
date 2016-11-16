@@ -14,8 +14,8 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 
-import construct_table as ct
-from utils import apply_context
+from tfglib import construct_table as ct
+from tfglib.utils import apply_context
 
 #############
 # Load data #

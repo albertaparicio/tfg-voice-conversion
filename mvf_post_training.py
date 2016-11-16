@@ -10,8 +10,8 @@ from keras.models import model_from_json
 from keras.optimizers import RMSprop
 from matplotlib import pyplot as plt
 
-from error_metrics import RMSE
-from utils import apply_context
+from ahoproc_tools.error_metrics import RMSE
+from tfglib.utils import apply_context
 
 #######################
 # Sizes and constants #

@@ -10,8 +10,8 @@ import h5py
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
 
-import utils
-from error_metrics import MCD
+from tfglib import utils
+from tfglib.error_metrics import MCD
 
 #######################
 # Sizes and constants #
