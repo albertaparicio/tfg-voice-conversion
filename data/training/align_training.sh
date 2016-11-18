@@ -65,11 +65,25 @@ while read FILENAME <&3; do
     interpolate.py --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
 
     # Apply dynamic time warping
-    dtw -l 40 -s ${DIR_FRM}/${FILENAME}.score -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null
+#     dtw -l 40 -s ${DIR_FRM}/${FILENAME}.score -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null
+#
+#     # Convert frames file to ASCII format
+#     x2x +ia ${DIR_FRM}/${FILENAME}.frames | do_columns.pl -c 2 > ${DIR_FRM}/${FILENAME}.frames.txt
+#     x2x +fa ${DIR_FRM}/${FILENAME}.score > ${DIR_FRM}/${FILENAME}.dtw_score
+# Apply UPC's DTW
+W5INDOW_SIZE=20; # 20ms window size
+FRAME_RATE=5; # 5ms window shift
+PRM_NAME="mMFPC,ed1E"
+PRM_OPT="-q 2,1 -e 0.1 -l $WINDOW_SIZE -d $FRAME_RATE -v HAMMING -o 20 -c 16"
+ZASKA="Zaska  -P $PRM_NAME $PRM_OPT"
 
-    # Convert frames file to ASCII format
-    x2x +ia ${DIR_FRM}/${FILENAME}.frames | do_columns.pl -c 2 > ${DIR_FRM}/${FILENAME}.frames.txt
-    x2x +fa ${DIR_FRM}/${FILENAME}.score > ${DIR_FRM}/${FILENAME}.dtw_score
+# Compute mfcc $DIR_REF/$FILENAME.wav $DIR_TST/$FILENAME.wav => mfcc/$DIR_REF/$FILENAME.prm mfcc/$DIR_TST/$FILENAME.prm
+$ZASKA -t RAW -x wav=msw -n . -p mfcc -F $DIR_REF/$FILENAME $DIR_TST/$FILENAME
+
+# Align: mfcc/$DIR_REF/$FILENAME.prm, mfcc/$DIR_TST/$FILENAME.prm => dtw/${DIR_REF}-$DIR_TST/$FILENAME.dtw
+b=2
+dtw -b -$b -t mfcc/$DIR_REF -r mfcc/$DIR_TST -a dtw/beam$b -w -B -f -F $FILENAME
+
 
     # Remove binary files
     rm ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0
@@ -80,8 +94,8 @@ while read FILENAME <&3; do
     rm ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp
     rm ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf
 
-    rm ${DIR_FRM}/${FILENAME}.frames
-    rm ${DIR_FRM}/${FILENAME}.score
+#     rm ${DIR_FRM}/${FILENAME}.frames
+#     rm ${DIR_FRM}/${FILENAME}.score
 done 3< basenames.list
 
 # Set End time of execution
