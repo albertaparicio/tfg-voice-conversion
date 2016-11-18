@@ -94,7 +94,7 @@ trg_train_frames[:, 0] = (trg_train_frames[:, 0] - trg_train_mean) / trg_train_s
 trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
 
 # Save training statistics
-with h5py.File('mvf_train_stats.h5', 'w') as f:
+with h5py.File('models/mvf_train_stats.h5', 'w') as f:
     h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
     h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
     h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
@@ -156,9 +156,9 @@ history = model.fit(
 )
 
 print('Saving model')
-model.save_weights('mvf_weights.h5')
+model.save_weights('models/mvf_weights.h5')
 
-with open('mvf_model.json', 'w') as model_json:
+with open('models/mvf_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
 print('========================' +

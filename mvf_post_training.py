@@ -25,10 +25,10 @@ context_size = 1
 # Load model #
 ##############
 print('Loading model...', end='')
-with open('mvf_model.json', 'r') as model_json:
+with open('models/mvf_model.json', 'r') as model_json:
     model = model_from_json(model_json.read())
 
-model.load_weights('mvf_weights.h5')
+model.load_weights('models/mvf_weights.h5')
 
 rmsprop = RMSprop(lr=learning_rate)
 model.compile(loss='mae', optimizer=rmsprop)
@@ -37,7 +37,7 @@ model.compile(loss='mae', optimizer=rmsprop)
 # Load data #
 #############
 # Load training statistics
-with h5py.File('mvf_train_stats.h5', 'r') as train_stats:
+with h5py.File('models/mvf_train_stats.h5', 'r') as train_stats:
     src_train_mean = train_stats['src_train_mean'].value
     src_train_std = train_stats['src_train_std'].value
     trg_train_mean = train_stats['trg_train_mean'].value

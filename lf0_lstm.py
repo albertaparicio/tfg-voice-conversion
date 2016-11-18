@@ -121,7 +121,7 @@ trg_valid_data = utils.reshape_lstm(trg_valid_data, tsteps, data_dim)
 trg_test_data = utils.reshape_lstm(trg_test_data, tsteps, data_dim)
 
 # Save training statistics
-with h5py.File('lf0_train_stats.h5', 'w') as f:
+with h5py.File('models/lf0_train_stats.h5', 'w') as f:
     h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
     h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
     h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
@@ -164,9 +164,9 @@ for i in range(epochs):
     model.reset_states()
 
 print('Saving model')
-model.save_weights('lf0_weights.h5')
+model.save_weights('models/lf0_weights.h5')
 
-with open('lf0_model.json', 'w') as model_json:
+with open('models/lf0_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
 print('========================' +
