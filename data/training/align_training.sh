@@ -1,9 +1,9 @@
 #!/bin/bash -
 #===============================================================================
 #
-#          FILE: align.sh
+#          FILE: align_training.sh
 #
-#         USAGE: ./align.sh
+#         USAGE: ./align_training.sh
 #
 #   DESCRIPTION:
 #
@@ -71,7 +71,7 @@ while read FILENAME <&3; do
 #     x2x +ia ${DIR_FRM}/${FILENAME}.frames | do_columns.pl -c 2 > ${DIR_FRM}/${FILENAME}.frames.txt
 #     x2x +fa ${DIR_FRM}/${FILENAME}.score > ${DIR_FRM}/${FILENAME}.dtw_score
 # Apply UPC's DTW
-W5INDOW_SIZE=20; # 20ms window size
+WINDOW_SIZE=20; # 20ms window size
 FRAME_RATE=5; # 5ms window shift
 PRM_NAME="mMFPC,ed1E"
 PRM_OPT="-q 2,1 -e 0.1 -l $WINDOW_SIZE -d $FRAME_RATE -v HAMMING -o 20 -c 16"
