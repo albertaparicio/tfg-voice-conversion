@@ -60,9 +60,9 @@ while read FILENAME <&3; do
 
     # Interpolate lfo and vf data
     # Source
-    interpolate.py --f0_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.vf.dat --no-uv
+    python $(which interpolate.py) --f0_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.vf.dat --no-uv
     # Target
-    interpolate.py --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
+    python $(which interpolate.py) --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
 
     # Apply dynamic time warping
 #     dtw -l 40 -s ${DIR_FRM}/${FILENAME}.score -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null

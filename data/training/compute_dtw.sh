@@ -31,10 +31,10 @@ DIR_FRM=frames
 # FILENAME=SF1_TF1_200001
 
 # Initialize vocoded and warped frames directories
-mkdir -p ${DIR_VOC}/${DIR_REF}
-mkdir -p ${DIR_VOC}/${DIR_TST}
-
-mkdir -p ${DIR_FRM}
+# mkdir -p ${DIR_VOC}/${DIR_REF}
+# mkdir -p ${DIR_VOC}/${DIR_TST}
+# 
+# mkdir -p ${DIR_FRM}
 
 # Get list of files to align. Only pick common files between source and target directory
 #ls ${DIR_REF} | perl -pe 's/.wav//' > basenames.list
@@ -59,6 +59,9 @@ while read FILENAME <&3; do
     dtw -b -$b -t mfcc/$DIR_REF -r mfcc/$DIR_TST -a dtw/beam$b -w -B -f -F $FILENAME
 
 done 3< basenames.list
+
+# Remove auxiliar parameters
+rm -r mfcc/
 
 # Set End time of execution
 END=$(date +%s.%N)
