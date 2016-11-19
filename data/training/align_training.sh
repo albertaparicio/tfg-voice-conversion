@@ -26,7 +26,7 @@ START=$(date +%s.%N)
 DIR_REF=SF1
 DIR_TST=TF1
 DIR_VOC=vocoded
-DIR_FRM=frames
+# DIR_FRM=frames
 
 # FILENAME=SF1_TF1_200001
 
@@ -34,7 +34,7 @@ DIR_FRM=frames
 mkdir -p ${DIR_VOC}/${DIR_REF}
 mkdir -p ${DIR_VOC}/${DIR_TST}
 
-mkdir -p ${DIR_FRM}
+# mkdir -p ${DIR_FRM}
 
 # Get list of files to align. Only pick common files between source and target directory
 #ls ${DIR_REF} | perl -pe 's/.wav//' > basenames.list
@@ -70,20 +70,6 @@ while read FILENAME <&3; do
 #     # Convert frames file to ASCII format
 #     x2x +ia ${DIR_FRM}/${FILENAME}.frames | do_columns.pl -c 2 > ${DIR_FRM}/${FILENAME}.frames.txt
 #     x2x +fa ${DIR_FRM}/${FILENAME}.score > ${DIR_FRM}/${FILENAME}.dtw_score
-# Apply UPC's DTW
-WINDOW_SIZE=20; # 20ms window size
-FRAME_RATE=5; # 5ms window shift
-PRM_NAME="mMFPC,ed1E"
-PRM_OPT="-q 2,1 -e 0.1 -l $WINDOW_SIZE -d $FRAME_RATE -v HAMMING -o 20 -c 16"
-ZASKA="Zaska  -P $PRM_NAME $PRM_OPT"
-
-# Compute mfcc $DIR_REF/$FILENAME.wav $DIR_TST/$FILENAME.wav => mfcc/$DIR_REF/$FILENAME.prm mfcc/$DIR_TST/$FILENAME.prm
-$ZASKA -t RAW -x wav=msw -n . -p mfcc -F $DIR_REF/$FILENAME $DIR_TST/$FILENAME
-
-# Align: mfcc/$DIR_REF/$FILENAME.prm, mfcc/$DIR_TST/$FILENAME.prm => dtw/${DIR_REF}-$DIR_TST/$FILENAME.dtw
-b=2
-dtw -b -$b -t mfcc/$DIR_REF -r mfcc/$DIR_TST -a dtw/beam$b -w -B -f -F $FILENAME
-
 
     # Remove binary files
     rm ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0
