@@ -13,6 +13,8 @@ from matplotlib import pyplot as plt
 from ahoproc_tools.error_metrics import RMSE
 from tfglib.utils import apply_context
 
+# TODO Plot loss curve
+
 #######################
 # Sizes and constants #
 #######################

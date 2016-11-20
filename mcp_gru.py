@@ -41,7 +41,7 @@ if build_datatable:
     # Build datatable of training and test data
     # (data is already encoded with Ahocoder)
     print('Saving training datatable...', end='')
-    ct.save_datatable(
+    train_data = ct.save_datatable(
         'data/training/',
         'train_data',
         'data/train_datatable'
@@ -49,7 +49,7 @@ if build_datatable:
     print('done')
 
     print('Saving test datatable...', end='')
-    ct.save_datatable(
+    test_data = ct.save_datatable(
         'data/test/',
         'test_data',
         'data/test_datatable'

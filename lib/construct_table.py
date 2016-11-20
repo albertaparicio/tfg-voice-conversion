@@ -198,6 +198,8 @@ def save_datatable(data_dir, dataset_name, datatable_out_file):
 
         f.close()
 
+    return data
+
 
 def load_datatable(datatable_file, dataset_name):
     """This function loads a datatable from a previously saved file

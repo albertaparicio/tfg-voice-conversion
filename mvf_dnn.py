@@ -21,7 +21,7 @@ from tfglib.utils import apply_context
 # Load data #
 #############
 #  Switch to decide if datatable must be build or can be loaded from a file
-build_datatable = True
+build_datatable = False
 
 print('Starting...')
 
@@ -29,7 +29,7 @@ if build_datatable:
     # Build datatable of training and test data
     # (data is already encoded with Ahocoder)
     print('Saving training datatable...', end='')
-    ct.save_datatable(
+    train_data = ct.save_datatable(
         'data/training/',
         'train_data',
         'data/train_datatable'
@@ -37,7 +37,7 @@ if build_datatable:
     print('done')
 
     print('Saving test datatable...', end='')
-    ct.save_datatable(
+    test_data = ct.save_datatable(
         'data/test/',
         'test_data',
         'data/test_datatable'
@@ -64,8 +64,8 @@ else:
 # Sizes and constants #
 #######################
 batch_size = 300
-nb_epochs = 50
-learning_rate = 0.001
+nb_epochs = 400
+learning_rate = 0.000001
 context_size = 1
 
 ################
