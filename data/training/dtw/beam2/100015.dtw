@@ -1,6 +1,6 @@
 # REF: mfcc/SF1/100015_sil.prm
 # TST: dtw/beam2/100015_sil.dtw
-# CST: 0.739238
+# CST: 0.739282
 # REF	TST
 # ----	----
 0	0
