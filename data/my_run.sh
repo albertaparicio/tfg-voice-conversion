@@ -7,6 +7,7 @@ DIR_TST='TF1'
 #FILENAME=t1
 FILENAME=100020
 
+# TODO Cleanup or delete
 # #-----------------------------------------------------------------
 #
 # WINDOW_SIZE=20;	FRAME_RATE=4;

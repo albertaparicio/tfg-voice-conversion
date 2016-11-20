@@ -8,7 +8,7 @@ DIR_TST='TF1'
 FILENAME=100020
 
 #-----------------------------------------------------------------
-
+# TODO Cleanup or delete
 WINDOW_SIZE=20;	FRAME_RATE=4;
 PRM_NAME="mMFPC,ed1E"
 PRM_OPT="-q 2,1 -e 0.1 -l $WINDOW_SIZE -d $FRAME_RATE -v HAMMING -o 20 -c 16"
