@@ -33,7 +33,7 @@ DIR_FRM=frames
 # Initialize vocoded and warped frames directories
 # mkdir -p ${DIR_VOC}/${DIR_REF}
 # mkdir -p ${DIR_VOC}/${DIR_TST}
-# 
+#
 # mkdir -p ${DIR_FRM}
 
 # Get list of files to align. Only pick common files between source and target directory
@@ -66,6 +66,9 @@ while read FILENAME <&3; do
     # Align: mfcc/${DIR_REF}/${FILENAME}.prm, mfcc/${DIR_TST/${FILENAME}.prm => dtw/${DIR_REF}-${DIR_TST}/${FILENAME}.dtw
     b=2
     dtw -b -${b} -t mfcc/${DIR_REF} -r mfcc/${DIR_TST} -a dtw/beam${b} -w -B -f -F ${FILENAME}_sil
+
+    # Change name of dtw frames file to remove the '_sil' at the end
+    mv dtw/beam${b}/${FILENAME}_sil.dtw dtw/beam${b}/${FILENAME}.dtw
 
     # Remove files with silence attached to them
     rm ${DIR_REF}/${FILENAME}_sil.wav ${DIR_TST}/${FILENAME}_sil.wav
