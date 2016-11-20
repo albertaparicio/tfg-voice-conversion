@@ -6,11 +6,10 @@ from __future__ import print_function
 
 import h5py
 import numpy as np
-
 from tfglib.utils import kronecker_delta
 
 
-def parse_file(param_len, file_path):
+def parse_file(param_len, file_path, offset=0):
     """This function parses a vocoder data file.
 
     INPUTS:
@@ -29,10 +28,10 @@ def parse_file(param_len, file_path):
     file_lines = open_file.readlines()
 
     # Preallocate matrix for an increased memory efficiency
-    file_params = np.empty([len(file_lines), param_len])
-    for index in range(0, len(file_lines), 1):
+    file_params = np.empty([len(file_lines) - offset, param_len])
+    for index in range(offset, len(file_lines), 1):
         aux = file_lines[index].split('\n')
-        file_params[index, :] = aux[0].split('\t')
+        file_params[index - offset, :] = aux[0].split('\t')
 
     return file_params
 
@@ -54,7 +53,7 @@ def align_frames(dtw_frames, source_params, target_params):
 
     data = np.empty(
         [dtw_frames.shape[0], source_params.shape[1] + target_params.shape[1]]
-        )
+    )
     for row, matching in enumerate(dtw_frames):
         data[row, :] = np.concatenate((
             source_params[int(dtw_frames[row, 0]), :],
@@ -103,7 +102,7 @@ def build_file_table(basename, source_dir, target_dir, dtw_dir):
         target_dir + basename + '.' + 'vf' + '.i.dat'
     )  # Use interpolated data
 
-    dtw_frames = parse_file(2, dtw_dir + basename + '.frames.txt')
+    dtw_frames = parse_file(2, dtw_dir + basename + '.dtw', 5)
 
     # Build voiced/unvoiced flag arrays
     # The flags are:
@@ -185,7 +184,7 @@ def save_datatable(data_dir, dataset_name, datatable_out_file):
         data_dir + 'basenames.list',
         data_dir + 'vocoded/SF1/',
         data_dir + 'vocoded/TF1/',
-        data_dir + 'frames/'
+        data_dir + 'dtw/beam2/'
     )
 
     # Save and compress with gzip to save space

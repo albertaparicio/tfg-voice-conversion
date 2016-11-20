@@ -21,7 +21,7 @@ from tfglib.utils import apply_context
 # Load data #
 #############
 #  Switch to decide if datatable must be build or can be loaded from a file
-build_datatable = False
+build_datatable = True
 
 print('Starting...')
 

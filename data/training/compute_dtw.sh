@@ -61,11 +61,11 @@ while read FILENAME <&3; do
     ZASKA="Zaska  -P $PRM_NAME $PRM_OPT"
 
     # Compute mfcc $DIR_REF/${FILENAME}.wav $DIR_TST/${FILENAME}.wav => mfcc/$DIR_REF/${FILENAME}.prm mfcc/$DIR_TST/${FILENAME}.prm
-    $ZASKA -t RAW -x wav=msw -n . -p mfcc -F ${DIR_REF}/${FILENAME}_sil ${DIR_TST}/${FILENAME}_sil
+    ${ZASKA} -t RAW -x wav=msw -n . -p mfcc -F ${DIR_REF}/${FILENAME}_sil ${DIR_TST}/${FILENAME}_sil
 
     # Align: mfcc/${DIR_REF}/${FILENAME}.prm, mfcc/${DIR_TST/${FILENAME}.prm => dtw/${DIR_REF}-${DIR_TST}/${FILENAME}.dtw
     b=2
-    dtw -b -$b -t mfcc/${DIR_REF} -r mfcc/${DIR_TST} -a dtw/beam$b -w -B -f -F ${FILENAME}
+    dtw -b -${b} -t mfcc/${DIR_REF} -r mfcc/${DIR_TST} -a dtw/beam${b} -w -B -f -F ${FILENAME}
 
     # Remove files with silence attached to them
     rm ${DIR_REF}/${FILENAME}_sil.wav ${DIR_TST}/${FILENAME}_sil.wav
