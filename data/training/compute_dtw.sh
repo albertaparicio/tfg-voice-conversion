@@ -65,7 +65,8 @@ while read FILENAME <&3; do
 
     # Align: mfcc/${DIR_REF}/${FILENAME}.prm, mfcc/${DIR_TST/${FILENAME}.prm => dtw/${DIR_REF}-${DIR_TST}/${FILENAME}.dtw
     b=2
-    dtw -b -${b} -t mfcc/${DIR_REF} -r mfcc/${DIR_TST} -a dtw/beam${b} -w -B -f -F ${FILENAME}_sil
+#     dtw -b -${b} -t mfcc/${DIR_REF} -r mfcc/${DIR_TST} -a dtw/beam${b} -w -B -f -F ${FILENAME}_sil
+    dtw -b -${b} -t mfcc/${DIR_TST} -r mfcc/${DIR_REF} -a dtw/beam${b} -w -B -f -F ${FILENAME}_sil
 
     # Change name of dtw frames file to remove the '_sil' at the end
     mv dtw/beam${b}/${FILENAME}_sil.dtw dtw/beam${b}/${FILENAME}.dtw
