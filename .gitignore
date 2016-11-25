@@ -5,6 +5,31 @@
 #data/test/predicted/*
 data/test/predicted/
 
+/data/test/SF1/
+/data/test/TM3/
+/data/test/TM2/
+/data/test/SM2/
+/data/test/TM1/
+/data/test/SM1/
+/data/test/SF3/
+/data/test/TF2/
+/data/test/SF2/
+/data/test/TF1/
+
+/data/training/SM1/
+/data/training/SM2/
+/data/training/TF2/
+/data/training/TF1/
+/data/training/SF1/
+/data/training/SF2/
+/data/training/SF3/
+/data/training/TM3/
+/data/training/TM2/
+/data/training/TM1/
+
+/data/training/vocoded/
+/data/training/vocoded_s2s/
+
 ### Windows template
 # Windows image file caches
 Thumbs.db
