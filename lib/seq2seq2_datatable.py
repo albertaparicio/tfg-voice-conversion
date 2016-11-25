@@ -250,9 +250,8 @@ def seq2seq_construct_datatable(data_dir, speakers_file, basenames_file):
     # Strip '\n' characters
     basenames = [line.split('\n')[0] for line in basenames]
 
-    # TODO Remove hardcoded value when definitive dataset is obtained
-    longest_seq = 700
-    # longest_seq = find_longest_sequence(data_dir, speakers, basenames)
+    # Find number of frames in longest sequence in the dataset
+    longest_seq = find_longest_sequence(data_dir, speakers, basenames)
 
     # Initialize datatable
     src_datatable = []
@@ -286,7 +285,8 @@ def seq2seq_construct_datatable(data_dir, speakers_file, basenames_file):
     return (np.array(src_datatable),
             np.array(src_masks),
             np.array(trg_datatable),
-            np.array(trg_masks))
+            np.array(trg_masks),
+            longest_seq)
 
 
 def seq2seq_save_datatable(data_dir, datatable_out_file):
@@ -314,7 +314,8 @@ def seq2seq_save_datatable(data_dir, datatable_out_file):
     (source_datatable,
      source_masks,
      target_datatable,
-     target_masks
+     target_masks,
+     max_seq_length
      ) = seq2seq_construct_datatable(
         data_dir,
         'speakers.list',
@@ -326,7 +327,8 @@ def seq2seq_save_datatable(data_dir, datatable_out_file):
         'src_datatable': source_datatable,
         'src_mask': source_masks,
         'trg_datatable': target_datatable,
-        'trg_mask': target_masks
+        'trg_mask': target_masks,
+        'max_seq_length': max_seq_length
     }
 
     # Save data to .h5 file
@@ -341,7 +343,11 @@ def seq2seq_save_datatable(data_dir, datatable_out_file):
 
             f.close()
 
-    return source_datatable, source_masks, target_datatable, target_masks
+    return (source_datatable,
+            source_masks,
+            target_datatable,
+            target_masks,
+            max_seq_length)
 
 
 def seq2seq2_load_datatable(datatable_file):
@@ -363,7 +369,12 @@ def seq2seq2_load_datatable(datatable_file):
         source_masks = file['src_mask'][:, :]
         target_datatable = file['trg_datatable'][:, :]
         target_masks = file['trg_mask'][:, :]
+        max_seq_length = file['max_seq_length'][:, :]
 
         file.close()
 
-    return source_datatable, source_masks, target_datatable, target_masks
+    return (source_datatable,
+            source_masks,
+            target_datatable,
+            target_masks,
+            max_seq_length)
