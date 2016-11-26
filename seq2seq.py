@@ -28,8 +28,8 @@ validation_fraction = 0.25
 
 #############
 # Load data #
-######################
-#  Switch to decide if datatable must be build or can be loaded from a file
+#############
+# Switch to decide if datatable must be build or can be loaded from a file
 build_datatable = True
 
 print('Starting...')
