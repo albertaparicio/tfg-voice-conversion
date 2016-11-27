@@ -44,7 +44,7 @@ if build_datatable:
      max_seq_length
      ) = s2s.seq2seq_save_datatable(
         'data/training/',
-        'data/seq2seq_train_datatable.h5'
+        'data/seq2seq_train_datatable'
     )
     print('done')
 
@@ -55,7 +55,7 @@ if build_datatable:
      trg_test_masks
      ) = s2s.seq2seq_save_datatable(
         'data/test/',
-        'data/seq2seq_test_datatable.h5'
+        'data/seq2seq_test_datatable'
     )
     print('done')
 
