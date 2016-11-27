@@ -7,7 +7,7 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
-import tfglib.seq2seq2_datatable as s2s
+import tfglib.seq2seq_datatable as s2s
 from keras.layers import GRU, Dropout
 from keras.layers.core import RepeatVector
 from keras.models import Sequential
@@ -41,7 +41,7 @@ if build_datatable:
      src_train_masks,
      trg_train_datatable,
      trg_train_masks,
-     max_seq_length
+     max_train_length
      ) = s2s.seq2seq_save_datatable(
         'data/training/',
         'data/seq2seq_train_datatable'
@@ -52,7 +52,8 @@ if build_datatable:
     (src_test_datatable,
      src_test_masks,
      trg_test_datatable,
-     trg_test_masks
+     trg_test_masks,
+     max_train_length
      ) = s2s.seq2seq_save_datatable(
         'data/test/',
         'data/seq2seq_test_datatable'
@@ -93,7 +94,7 @@ model.add(GRU(100,
               input_dim=data_dim,
               return_sequences=False
               ))
-model.add(RepeatVector(max_seq_length))
+model.add(RepeatVector(max_train_length))
 
 # Decoder layer
 model.add(GRU(100, return_sequences=True))
