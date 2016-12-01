@@ -30,7 +30,7 @@ validation_fraction = 0.25
 # Load data #
 #############
 # Switch to decide if datatable must be build or can be loaded from a file
-build_datatable = True
+build_datatable = False
 
 print('Starting...')
 if build_datatable:
@@ -53,7 +53,7 @@ if build_datatable:
      src_test_masks,
      trg_test_datatable,
      trg_test_masks,
-     max_train_length
+     max_test_length
      ) = s2s.seq2seq_save_datatable(
         'data/test/',
         'data/seq2seq_test_datatable'
@@ -67,7 +67,7 @@ else:
      src_train_masks,
      trg_train_datatable,
      trg_train_masks,
-     max_seq_length
+     max_train_length
      ) = s2s.seq2seq2_load_datatable(
         'data/seq2seq_train_datatable.h5'
     )
@@ -77,7 +77,8 @@ else:
     (src_test_datatable,
      src_test_masks,
      trg_test_datatable,
-     trg_test_masks
+     trg_test_masks,
+     max_test_length
      ) = s2s.seq2seq2_load_datatable(
         'data/seq2seq_test_datatable.h5'
     )
