@@ -12,6 +12,7 @@ from keras.layers import GRU, Dropout
 from keras.layers.core import RepeatVector
 from keras.models import Sequential
 from keras.optimizers import Adamax
+from tfglib.seq2seq_normalize import maxmin_scaling
 
 #######################
 # Sizes and constants #
@@ -41,7 +42,9 @@ if build_datatable:
      src_train_masks,
      trg_train_datatable,
      trg_train_masks,
-     max_train_length
+     max_train_length,
+     train_speakers_max,
+     train_speakers_min
      ) = s2s.seq2seq_save_datatable(
         'data/training/',
         'data/seq2seq_train_datatable'
@@ -53,7 +56,9 @@ if build_datatable:
      src_test_masks,
      trg_test_datatable,
      trg_test_masks,
-     max_test_length
+     max_test_length,
+     test_speakers_max,
+     test_speakers_min
      ) = s2s.seq2seq_save_datatable(
         'data/test/',
         'data/seq2seq_test_datatable'
@@ -67,7 +72,9 @@ else:
      src_train_masks,
      trg_train_datatable,
      trg_train_masks,
-     max_train_length
+     max_train_length,
+     train_speakers_max,
+     train_speakers_min
      ) = s2s.seq2seq2_load_datatable(
         'data/seq2seq_train_datatable.h5'
     )
@@ -78,11 +85,60 @@ else:
      src_test_masks,
      trg_test_datatable,
      trg_test_masks,
-     max_test_length
+     max_test_length,
+     test_speakers_max,
+     test_speakers_min
      ) = s2s.seq2seq2_load_datatable(
         'data/seq2seq_test_datatable.h5'
     )
     print('done')
+
+##################
+# Normalize data #
+##################
+# Iterate over sequence 'slices'
+assert src_train_datatable.shape[0] == trg_train_datatable.shape[0]
+
+for i in range(src_train_datatable.shape[0]):
+    (src_train_datatable[i, :, 0:42], trg_train_datatable[i, :, 0:42]) = maxmin_scaling(
+        src_train_datatable[i, :, :],
+        src_train_masks[i, :],
+        trg_train_datatable[i, :, :],
+        trg_train_masks[i, :],
+        train_speakers_max,
+        train_speakers_min
+    )
+
+# trg_train_datatable[i, :, 0:42] = maxmin_scaling(
+#         trg_train_datatable[i, :, 0:42],
+#         train_speakers_max[np.argmax(src_train_datatable[i, :, 54:64]), :],
+#         train_speakers_min[np.argmax(src_train_datatable[i, :, 54:64]), :]
+#     )
+#
+assert src_test_datatable.shape[0] == trg_test_datatable.shape[0]
+
+for i in range(src_test_datatable.shape[0]):
+    (src_test_datatable[i, :, 0:42], trg_test_datatable[i, :, 0:42]) = maxmin_scaling(
+        src_test_datatable[i, :, :],
+        src_test_masks[i, :],
+        trg_test_datatable[i, :, :],
+        trg_test_masks[i, :],
+        test_speakers_max,
+        test_speakers_min
+    )
+#
+# for i in range(src_test_datatable.shape[0]):
+#     src_test_datatable[i, :, 0:42] = maxmin_scaling(
+#         src_test_datatable[i, :, 0:42],
+#         test_speakers_max[np.argmax(src_test_datatable[i, :, 44:54]), :],
+#         test_speakers_min[np.argmax(src_test_datatable[i, :, 44:54]), :],
+#     )
+#
+#     trg_test_datatable[i, :, 0:42] = maxmin_scaling(
+#         trg_test_datatable[i, :, 0:42],
+#         test_speakers_max[np.argmax(src_test_datatable[i, :, 54:64]), :],
+#         test_speakers_min[np.argmax(src_test_datatable[i, :, 54:64]), :]
+#     )
 
 ################
 # Define Model #
@@ -103,7 +159,7 @@ model.add(Dropout(0.5))
 model.add(GRU(44, return_sequences=True, activation='linear'))
 
 adamax = Adamax(lr=learning_rate, clipnorm=10)
-model.compile(loss='mse', optimizer=adamax)
+model.compile(loss='mse', optimizer=adamax, sample_weight_mode="temporal")
 
 ###############
 # Train model #
