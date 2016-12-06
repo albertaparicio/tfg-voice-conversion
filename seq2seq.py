@@ -7,6 +7,7 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import numpy as np
 import tfglib.seq2seq_datatable as s2s
 from keras.layers import GRU, Dropout
 from keras.layers.core import RepeatVector
@@ -18,13 +19,13 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 # Sizes and constants #
 #######################
 # Batch shape
-batch_size = 100
+batch_size = 200
 data_dim = 44 + 10 + 10
 
 # Other constants
 epochs = 50
 # lahead = 1  # number of elements ahead that are used to make the prediction
-learning_rate = 0.01
+learning_rate = 0.002
 validation_fraction = 0.25
 
 #############
@@ -100,7 +101,10 @@ else:
 assert src_train_datatable.shape[0] == trg_train_datatable.shape[0]
 
 for i in range(src_train_datatable.shape[0]):
-    (src_train_datatable[i, :, 0:42], trg_train_datatable[i, :, 0:42]) = maxmin_scaling(
+    (
+        src_train_datatable[i, :, 0:42],
+        trg_train_datatable[i, :, 0:42]
+    ) = maxmin_scaling(
         src_train_datatable[i, :, :],
         src_train_masks[i, :],
         trg_train_datatable[i, :, :],
@@ -109,16 +113,13 @@ for i in range(src_train_datatable.shape[0]):
         train_speakers_min
     )
 
-# trg_train_datatable[i, :, 0:42] = maxmin_scaling(
-#         trg_train_datatable[i, :, 0:42],
-#         train_speakers_max[np.argmax(src_train_datatable[i, :, 54:64]), :],
-#         train_speakers_min[np.argmax(src_train_datatable[i, :, 54:64]), :]
-#     )
-#
 assert src_test_datatable.shape[0] == trg_test_datatable.shape[0]
 
 for i in range(src_test_datatable.shape[0]):
-    (src_test_datatable[i, :, 0:42], trg_test_datatable[i, :, 0:42]) = maxmin_scaling(
+    (
+        src_test_datatable[i, :, 0:42],
+        trg_test_datatable[i, :, 0:42]
+    ) = maxmin_scaling(
         src_test_datatable[i, :, :],
         src_test_masks[i, :],
         trg_test_datatable[i, :, :],
@@ -126,19 +127,6 @@ for i in range(src_test_datatable.shape[0]):
         test_speakers_max,
         test_speakers_min
     )
-#
-# for i in range(src_test_datatable.shape[0]):
-#     src_test_datatable[i, :, 0:42] = maxmin_scaling(
-#         src_test_datatable[i, :, 0:42],
-#         test_speakers_max[np.argmax(src_test_datatable[i, :, 44:54]), :],
-#         test_speakers_min[np.argmax(src_test_datatable[i, :, 44:54]), :],
-#     )
-#
-#     trg_test_datatable[i, :, 0:42] = maxmin_scaling(
-#         trg_test_datatable[i, :, 0:42],
-#         test_speakers_max[np.argmax(src_test_datatable[i, :, 54:64]), :],
-#         test_speakers_min[np.argmax(src_test_datatable[i, :, 54:64]), :]
-#     )
 
 ################
 # Define Model #
@@ -159,21 +147,38 @@ model.add(Dropout(0.5))
 model.add(GRU(44, return_sequences=True, activation='linear'))
 
 adamax = Adamax(lr=learning_rate, clipnorm=10)
-model.compile(loss='mse', optimizer=adamax, sample_weight_mode="temporal")
+loss = 'mse'
+model.compile(loss=loss, optimizer=adamax, sample_weight_mode="temporal")
 
 ###############
 # Train model #
 ###############
 print('Training')
-model.fit(src_train_datatable,
-          trg_train_datatable,
-          batch_size=batch_size,
-          verbose=1,
-          nb_epoch=epochs,
-          shuffle=False,
-          # validation_data=(src_valid_data, trg_valid_data),
-          validation_split=validation_fraction,
-          sample_weight=trg_train_masks)
+history = model.fit(src_train_datatable,
+                    trg_train_datatable,
+                    batch_size=batch_size,
+                    verbose=1,
+                    nb_epoch=epochs,
+                    shuffle=False,
+                    validation_split=validation_fraction,
+                    sample_weight=trg_train_masks)
+
+print('Saving model')
+model.save_weights('models/seq2seq_weights.h5')
+
+with open('models/seq2seq_model.json', 'w') as model_json:
+    model_json.write(model.to_json())
+
+print('Saving training results')
+np.savetxt('training_results/seq2seq_' + loss + '_' + 'adamax' + '_' +
+           str(epochs) + '_lr_' + str(learning_rate) +
+           'epochs.csv', history.epoch, delimiter=',')
+np.savetxt('training_results/seq2seq_' + loss + '_' + 'adamax' + '_' +
+           str(epochs) + '_lr_' + str(learning_rate) +
+           'loss.csv', history.history['loss'], delimiter=',')
+np.savetxt('training_results/seq2seq_' + loss + '_' + 'adamax' + '_' +
+           str(epochs) + '_lr_' + str(learning_rate) +
+           'val_loss.csv', history.history['val_loss'], delimiter=',')
 
 print('========================' +
       '\n' +
