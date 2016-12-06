@@ -19,13 +19,13 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 # Sizes and constants #
 #######################
 # Batch shape
-batch_size = 200
+batch_size = 300
 data_dim = 44 + 10 + 10
 
 # Other constants
 epochs = 50
 # lahead = 1  # number of elements ahead that are used to make the prediction
-learning_rate = 0.002
+learning_rate = 0.0002
 validation_fraction = 0.25
 
 #############
@@ -146,6 +146,7 @@ model.add(GRU(100, return_sequences=True))
 model.add(Dropout(0.5))
 model.add(GRU(44, return_sequences=True, activation='linear'))
 
+optimizer = 'adamax'
 adamax = Adamax(lr=learning_rate, clipnorm=10)
 loss = 'mse'
 model.compile(loss=loss, optimizer=adamax, sample_weight_mode="temporal")
@@ -170,15 +171,18 @@ with open('models/seq2seq_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
 print('Saving training results')
-np.savetxt('training_results/seq2seq_' + loss + '_' + 'adamax' + '_' +
+# np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
+#            str(epochs) + '_lr_' + str(learning_rate) +
+#            '_data.csv', [epochs, learning_rate, optimizer, loss], delimiter=',')
+np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
            str(epochs) + '_lr_' + str(learning_rate) +
-           'epochs.csv', history.epoch, delimiter=',')
-np.savetxt('training_results/seq2seq_' + loss + '_' + 'adamax' + '_' +
+           '_epochs.csv', history.epoch, delimiter=',')
+np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
            str(epochs) + '_lr_' + str(learning_rate) +
-           'loss.csv', history.history['loss'], delimiter=',')
-np.savetxt('training_results/seq2seq_' + loss + '_' + 'adamax' + '_' +
+           '_loss.csv', history.history['loss'], delimiter=',')
+np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
            str(epochs) + '_lr_' + str(learning_rate) +
-           'val_loss.csv', history.history['val_loss'], delimiter=',')
+           '_val_loss.csv', history.history['val_loss'], delimiter=',')
 
 print('========================' +
       '\n' +

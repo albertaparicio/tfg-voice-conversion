@@ -1,7 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
 ### DNN Training files
-*.csv
-*.png
+#*.csv
+#*.png
 #data/test/predicted/*
 data/test/predicted/
 
