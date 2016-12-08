@@ -26,7 +26,7 @@ data_dim = 44 + 10 + 10
 # Other constants
 epochs = 50
 # lahead = 1  # number of elements ahead that are used to make the prediction
-learning_rate = 0.0002
+learning_rate = 0.002
 validation_fraction = 0.25
 
 #############
@@ -170,3 +170,5 @@ np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
 print('========================' + '\n' +
       '======= FINISHED =======' + '\n' +
       '========================')
+
+exit()
