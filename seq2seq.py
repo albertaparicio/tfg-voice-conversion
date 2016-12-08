@@ -7,6 +7,7 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
 from keras.layers import GRU, Dropout
@@ -19,7 +20,7 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 # Sizes and constants #
 #######################
 # Batch shape
-batch_size = 300
+batch_size = 200
 data_dim = 44 + 10 + 10
 
 # Other constants
@@ -81,19 +82,6 @@ else:
     )
     print('done')
 
-    print('Loading test datatable...', end='')
-    (src_test_datatable,
-     src_test_masks,
-     trg_test_datatable,
-     trg_test_masks,
-     max_test_length,
-     test_speakers_max,
-     test_speakers_min
-     ) = s2s.seq2seq2_load_datatable(
-        'data/seq2seq_test_datatable.h5'
-    )
-    print('done')
-
 ##################
 # Normalize data #
 ##################
@@ -111,21 +99,6 @@ for i in range(src_train_datatable.shape[0]):
         trg_train_masks[i, :],
         train_speakers_max,
         train_speakers_min
-    )
-
-assert src_test_datatable.shape[0] == trg_test_datatable.shape[0]
-
-for i in range(src_test_datatable.shape[0]):
-    (
-        src_test_datatable[i, :, 0:42],
-        trg_test_datatable[i, :, 0:42]
-    ) = maxmin_scaling(
-        src_test_datatable[i, :, :],
-        src_test_masks[i, :],
-        trg_test_datatable[i, :, :],
-        trg_test_masks[i, :],
-        test_speakers_max,
-        test_speakers_min
     )
 
 ################
@@ -165,15 +138,25 @@ history = model.fit(src_train_datatable,
                     sample_weight=trg_train_masks)
 
 print('Saving model')
-model.save_weights('models/seq2seq_weights.h5')
+model.save_weights('models/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
+                   str(epochs) + '_lr_' + str(learning_rate) +
+                   '_weights.h5')
 
-with open('models/seq2seq_model.json', 'w') as model_json:
+with open('models/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
+          str(epochs) + '_lr_' + str(learning_rate) + '_model.json', 'w'
+          ) as model_json:
     model_json.write(model.to_json())
 
+print('Saving training parameters')
+with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
+    f.attrs.create('loss', np.string_(loss))
+    f.attrs.create('optimizer', np.string_(optimizer))
+    f.attrs.create('epochs', epochs, dtype=int)
+    f.attrs.create('learning_rate', learning_rate)
+    f.attrs.create('train_speakers_max', train_speakers_max)
+    f.attrs.create('train_speakers_min', train_speakers_min)
+
 print('Saving training results')
-# np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
-#            str(epochs) + '_lr_' + str(learning_rate) +
-#            '_data.csv', [epochs, learning_rate, optimizer, loss], delimiter=',')
 np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
            str(epochs) + '_lr_' + str(learning_rate) +
            '_epochs.csv', history.epoch, delimiter=',')
@@ -184,9 +167,6 @@ np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
            str(epochs) + '_lr_' + str(learning_rate) +
            '_val_loss.csv', history.history['val_loss'], delimiter=',')
 
-print('========================' +
-      '\n' +
-      '======= FINISHED =======' +
-      '\n' +
-      '========================'
-      )
+print('========================' + '\n' +
+      '======= FINISHED =======' + '\n' +
+      '========================')
