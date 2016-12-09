@@ -1,18 +1,18 @@
-#!/bin/bash - 
+#!/bin/bash -
 #===============================================================================
 #
 #          FILE: sptk_vc.sh
-# 
-#         USAGE: ./sptk_vc.sh 
-# 
-#   DESCRIPTION: 
-# 
+#
+#         USAGE: ./sptk_vc.sh
+#
+#   DESCRIPTION:
+#
 #       OPTIONS: ---
 #  REQUIREMENTS: ---
 #          BUGS: ---
 #         NOTES: ---
-#        AUTHOR: YOUR NAME (), 
-#  ORGANIZATION: 
+#        AUTHOR: YOUR NAME (),
+#  ORGANIZATION:
 #       CREATED: 10/11/16 18:09
 #      REVISION:  ---
 #===============================================================================
