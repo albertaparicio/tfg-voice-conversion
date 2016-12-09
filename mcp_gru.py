@@ -13,8 +13,8 @@ from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 
-import construct_table as ct
-import utils
+from tfglib import construct_table as ct
+from tfglib import utils
 
 #######################
 # Sizes and constants #
@@ -41,7 +41,7 @@ if build_datatable:
     # Build datatable of training and test data
     # (data is already encoded with Ahocoder)
     print('Saving training datatable...', end='')
-    ct.save_datatable(
+    train_data = ct.save_datatable(
         'data/training/',
         'train_data',
         'data/train_datatable'
@@ -49,7 +49,7 @@ if build_datatable:
     print('done')
 
     print('Saving test datatable...', end='')
-    ct.save_datatable(
+    test_data = ct.save_datatable(
         'data/test/',
         'test_data',
         'data/test_datatable'
@@ -108,7 +108,7 @@ trg_train_data = utils.reshape_lstm(trg_train_data, tsteps, data_dim)
 trg_valid_data = utils.reshape_lstm(trg_valid_data, tsteps, data_dim)
 
 # Save training statistics
-with h5py.File('mcp_train_stats.h5', 'w') as f:
+with h5py.File('models/mcp_train_stats.h5', 'w') as f:
     h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
     h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
     h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
@@ -151,9 +151,9 @@ for i in range(epochs):
     model.reset_states()
 
 print('Saving model')
-model.save_weights('mcp_weights.h5')
+model.save_weights('models/mcp_weights.h5')
 
-with open('mcp_model.json', 'w') as model_json:
+with open('models/mcp_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
 print('========================' +

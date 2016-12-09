@@ -9,8 +9,8 @@ import numpy as np
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
 
-import utils
-from construct_table import parse_file
+from tfglib import utils
+from tfglib.construct_table import parse_file
 
 ###############
 # Load models #
@@ -20,16 +20,16 @@ from construct_table import parse_file
 mvf_lr = 0.001
 context_size = 1
 
-with open('mvf_model.json', 'r') as model_json:
+with open('models/mvf_model.json', 'r') as model_json:
     mvf_model = model_from_json(model_json.read())
 
-mvf_model.load_weights('mvf_weights.h5')
+mvf_model.load_weights('models/mvf_weights.h5')
 
 mvf_rmsprop = RMSprop(lr=mvf_lr)
 mvf_model.compile(loss='mae', optimizer=mvf_rmsprop)
 
 # Load training statistics
-with h5py.File('mvf_train_stats.h5', 'r') as train_stats:
+with h5py.File('models/mvf_train_stats.h5', 'r') as train_stats:
     src_mvf_mean = train_stats['src_train_mean'].value
     src_mvf_std = train_stats['src_train_std'].value
     trg_mvf_mean = train_stats['trg_train_mean'].value
@@ -44,14 +44,14 @@ lf0_batch_size = 1
 lf0_tsteps = 50
 lf0_data_dim = 2
 
-with open('lf0_model.json', 'r') as model_json:
+with open('models/lf0_model.json', 'r') as model_json:
     lf0_model = model_from_json(model_json.read())
 
-lf0_model.load_weights('lf0_weights.h5')
+lf0_model.load_weights('models/lf0_weights.h5')
 lf0_model.compile(loss='mse', optimizer='rmsprop')
 
 # Load training statistics
-with h5py.File('lf0_train_stats.h5', 'r') as train_stats:
+with h5py.File('models/lf0_train_stats.h5', 'r') as train_stats:
     src_lf0_mean = train_stats['src_train_mean'].value
     src_lf0_std = train_stats['src_train_std'].value
     trg_lf0_mean = train_stats['trg_train_mean'].value
@@ -67,16 +67,16 @@ mcp_batch_size = 1
 mcp_tsteps = 50
 mcp_data_dim = 40
 
-with open('mcp_model.json', 'r') as model_json:
+with open('models/mcp_model.json', 'r') as model_json:
     mcp_model = model_from_json(model_json.read())
 
-mcp_model.load_weights('mcp_weights.h5')
+mcp_model.load_weights('models/mcp_weights.h5')
 
 mcp_rmsprop = RMSprop(lr=mcp_lr)
 mcp_model.compile(loss='mse', optimizer=mcp_rmsprop)
 
 # Load training statistics
-with h5py.File('mcp_train_stats.h5', 'r') as train_stats:
+with h5py.File('models/mcp_train_stats.h5', 'r') as train_stats:
     src_mcp_mean = train_stats['src_train_mean'][:]
     src_mcp_std = train_stats['src_train_std'][:]
     trg_mcp_mean = train_stats['trg_train_mean'][:]

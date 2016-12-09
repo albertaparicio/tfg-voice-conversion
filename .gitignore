@@ -2,7 +2,8 @@
 ### DNN Training files
 *.csv
 *.png
-./data/test/predicted
+#data/test/predicted/*
+data/test/predicted/
 
 ### Windows template
 # Windows image file caches
@@ -102,7 +103,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+#lib/
 lib64/
 parts/
 sdist/
@@ -217,4 +218,3 @@ Session.vim
 *~
 # auto-generated tag files
 tags
-

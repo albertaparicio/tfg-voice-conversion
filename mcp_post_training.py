@@ -10,8 +10,8 @@ import h5py
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
 
-import utils
-from error_metrics import MCD
+from tfglib import utils
+from tfglib.error_metrics import MCD
 
 #######################
 # Sizes and constants #
@@ -26,10 +26,10 @@ data_dim = 40
 ##############
 # Load already trained LSTM-RNN model
 print('Loading model...', end='')
-with open('mcp_model.json', 'r') as model_json:
+with open('models/mcp_model.json', 'r') as model_json:
     model = model_from_json(model_json.read())
 
-model.load_weights('mcp_weights.h5')
+model.load_weights('models/mcp_weights.h5')
 
 rmsprop = RMSprop(lr=0.0001)
 model.compile(loss='mse', optimizer=rmsprop)
@@ -38,7 +38,7 @@ model.compile(loss='mse', optimizer=rmsprop)
 # Load data #
 #############
 # Load training statistics
-with h5py.File('mcp_train_stats.h5', 'r') as train_stats:
+with h5py.File('models/mcp_train_stats.h5', 'r') as train_stats:
     src_train_mean = train_stats['src_train_mean'][:]
     src_train_std = train_stats['src_train_std'][:]
     trg_train_mean = train_stats['trg_train_mean'][:]

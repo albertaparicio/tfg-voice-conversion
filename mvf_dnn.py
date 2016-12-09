@@ -14,8 +14,8 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 
-import construct_table as ct
-from utils import apply_context
+from tfglib import construct_table as ct
+from tfglib.utils import apply_context
 
 #############
 # Load data #
@@ -29,7 +29,7 @@ if build_datatable:
     # Build datatable of training and test data
     # (data is already encoded with Ahocoder)
     print('Saving training datatable...', end='')
-    ct.save_datatable(
+    train_data = ct.save_datatable(
         'data/training/',
         'train_data',
         'data/train_datatable'
@@ -37,7 +37,7 @@ if build_datatable:
     print('done')
 
     print('Saving test datatable...', end='')
-    ct.save_datatable(
+    test_data = ct.save_datatable(
         'data/test/',
         'test_data',
         'data/test_datatable'
@@ -64,8 +64,8 @@ else:
 # Sizes and constants #
 #######################
 batch_size = 300
-nb_epochs = 50
-learning_rate = 0.001
+nb_epochs = 400
+learning_rate = 0.000001
 context_size = 1
 
 ################
@@ -94,7 +94,7 @@ trg_train_frames[:, 0] = (trg_train_frames[:, 0] - trg_train_mean) / trg_train_s
 trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
 
 # Save training statistics
-with h5py.File('mvf_train_stats.h5', 'w') as f:
+with h5py.File('models/mvf_train_stats.h5', 'w') as f:
     h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
     h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
     h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
@@ -156,9 +156,9 @@ history = model.fit(
 )
 
 print('Saving model')
-model.save_weights('mvf_weights.h5')
+model.save_weights('models/mvf_weights.h5')
 
-with open('mvf_model.json', 'w') as model_json:
+with open('models/mvf_model.json', 'w') as model_json:
     model_json.write(model.to_json())
 
 print('========================' +

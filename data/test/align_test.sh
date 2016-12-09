@@ -1,9 +1,9 @@
 #!/bin/bash -
 #===============================================================================
 #
-#          FILE: align.sh
+#          FILE: align_test.sh
 #
-#         USAGE: ./align.sh
+#         USAGE: ./align_test.sh
 #
 #   DESCRIPTION:
 #
@@ -18,26 +18,19 @@
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
+
 # Start time of execution
 START=$(date +%s.%N)
 
-#DIR_REF=test_source
-#DIR_TST=test_target
 DIR_REF=SF1
 DIR_TST=TF1
 DIR_VOC=vocoded
-DIR_FRM=frames
-
-# FILENAME=SF1_TF1_200001
 
 # Initialize vocoded and warped frames directories
 mkdir -p ${DIR_VOC}/${DIR_REF}
 mkdir -p ${DIR_VOC}/${DIR_TST}
 
-mkdir -p ${DIR_FRM}
-
 # Get list of files to align. Only pick common files between source and target directory
-#ls ${DIR_REF} | perl -pe 's/.wav//' > basenames.list
 diff ${DIR_REF} ${DIR_TST} | grep 'and' | cut -d '/' -f 2 | cut -d '.' -f 1 > basenames.list
 
 # Perform alignment on each file in basenames.list
@@ -60,15 +53,9 @@ while read FILENAME <&3; do
 
     # Interpolate lfo and vf data
     # Source
-    interpolate.py --f0_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.vf.dat --no-uv
+    python $(which interpolate.py) --f0_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_REF}/${FILENAME}.vf.dat --no-uv
     # Target
-    interpolate.py --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
-
-    # Apply dynamic time warping
-    dtw -l 40 -v ${DIR_FRM}/${FILENAME}.frames ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp < ${DIR_VOC}/${DIR_REF}/${FILENAME}.mcp > /dev/null
-
-    # Convert frames file to ASCII format
-    x2x +ia ${DIR_FRM}/${FILENAME}.frames | do_columns.pl -c 2 > ${DIR_FRM}/${FILENAME}.frames.txt
+    python $(which interpolate.py) --f0_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.lf0.dat --vf_file ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf.dat --no-uv
 
     # Remove binary files
     rm ${DIR_VOC}/${DIR_REF}/${FILENAME}.lf0
@@ -79,7 +66,6 @@ while read FILENAME <&3; do
     rm ${DIR_VOC}/${DIR_TST}/${FILENAME}.mcp
     rm ${DIR_VOC}/${DIR_TST}/${FILENAME}.vf
 
-    rm ${DIR_FRM}/${FILENAME}.frames
 done 3< basenames.list
 
 # Set End time of execution
