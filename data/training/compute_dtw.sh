@@ -28,7 +28,8 @@ DIR_VOC=vocoded
 DIR_DTW=dtw
 
 # Get list of files to align. Only pick common files between source and target directory
-diff ${DIR_REF} ${DIR_TST} | grep 'and' | cut -d '/' -f 2 | cut -d '.' -f 1 > basenames.list
+# diff ${DIR_REF} ${DIR_TST} | grep 'and' | cut -d '/' -f 2 | cut -d '.' -f 1 > basenames.list
+ls $DIR_REF | cut -d '.' -f 1 > basenames.list
 
 # Initialize silence sample file
 sox -n -r 16000 -c 1  -e signed-integer -b 16 silence.wav  trim 0 0.025
