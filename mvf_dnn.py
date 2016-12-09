@@ -15,6 +15,7 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 
 import construct_table as ct
+from utils import apply_context
 
 #############
 # Load data #
@@ -65,12 +66,11 @@ else:
 batch_size = 300
 nb_epochs = 50
 learning_rate = 0.001
+context_size = 1
 
 ################
 # Prepare data #
 ################
-# TODO Implement context
-
 # Randomize frames
 # np.random.shuffle(train_data)
 
@@ -102,15 +102,25 @@ with h5py.File('mvf_train_stats.h5', 'w') as f:
 
     f.close()
 
+# Apply context
+src_train_frames_context = np.column_stack((
+    apply_context(src_train_frames[:, 0], context_size), src_train_frames[:, 1]
+))
+src_valid_frames_context = np.column_stack((
+    apply_context(src_valid_frames[:, 0], context_size), src_valid_frames[:, 1]
+))
+
 # exit()
 
 ################
 # Define Model #
 ################
+# Adjust DNN sizes to implement context
 print('Evaluate DNN...')
 model = Sequential()
 
-model.add(Dense(100, input_dim=2))
+# model.add(Dense(100, input_dim=2))
+model.add(Dense(100, input_dim=(2 * context_size + 1) + 1))
 model.add(LeakyReLU(alpha=0.3))
 model.add(Dropout(0.5))
 
@@ -136,12 +146,12 @@ reduce_lr = ReduceLROnPlateau(
     mode='min')
 
 history = model.fit(
-    src_train_frames,
+    src_train_frames_context,
     trg_train_frames,
     batch_size=batch_size,
     nb_epoch=nb_epochs,
     verbose=1,
-    validation_data=(src_valid_frames, trg_valid_frames),
+    validation_data=(src_valid_frames_context, trg_valid_frames),
     callbacks=[reduce_lr]
 )
 

@@ -4,9 +4,6 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
-import os
-import subprocess
-
 import h5py
 import numpy as np
 from keras.models import model_from_json
@@ -21,6 +18,7 @@ from construct_table import parse_file
 # mvf model
 ###########
 mvf_lr = 0.001
+context_size = 1
 
 with open('mvf_model.json', 'r') as model_json:
     mvf_model = model_from_json(model_json.read())
@@ -126,6 +124,8 @@ for basename in basenames:
     lf0_params = utils.reshape_lstm(np.column_stack((lf0_params, uv_flags)), lf0_tsteps, lf0_data_dim)
 
     mvf_params = (mvf_params - src_mvf_mean) / src_mvf_std
+    mvf_params = utils.apply_context(mvf_params, context_size)  # Apply context
+
     ######################
     # Predict parameters #
     ######################

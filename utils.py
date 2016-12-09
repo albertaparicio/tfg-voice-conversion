@@ -27,6 +27,32 @@ def kronecker_delta(x):
         return 0
 
 
+def apply_context(input_matrix, context_size):
+    """Currently this function only works for:
+        - Input matrix of Nx1 elements"""
+    assert input_matrix.shape[0] == input_matrix.size
+
+    # Reshape into (N,1) array, avoiding shapes like (N,)
+    input_matrix = input_matrix.reshape((-1, 1))
+
+    # Replicate matrix 'context_size' times
+    replicated = input_matrix.repeat(2 * context_size + 1, axis=1)
+
+    # Roll context elements
+    for i in np.arange(0, 2 * context_size + 1):
+        replicated[:, i] = np.roll(replicated[:, i], context_size - i)
+
+        # TODO Zero out the out-of-context samples
+        if (context_size - i) > 0:
+            replicated[0:context_size - i, i] = 0
+
+        elif (context_size - i) < 0:
+            # replicated[0:context_size - i, i] = 0
+            replicated[replicated.shape[0] + (context_size - i):replicated.shape[0], i] = 0
+
+    return replicated
+
+
 def reshape_lstm(a, tsteps, data_dim):
     """Zero-pad and reshape the input matrix 'a' so it can be fed into a stateful LSTM-based RNN"""
     # Compute the amount of zero-vectors that need to be added to the matrix
