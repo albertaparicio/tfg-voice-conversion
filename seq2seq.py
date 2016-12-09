@@ -110,15 +110,21 @@ model = Sequential()
 
 # Encoder Layer
 model.add(GRU(100,
-              input_dim=data_dim,
-              return_sequences=False
+              input_dim=(max_train_length, data_dim),
+              return_sequences=False,
+              consume_less='gpu'
               ))
 model.add(RepeatVector(max_train_length))
 
 # Decoder layer
-model.add(GRU(100, return_sequences=True))
+model.add(GRU(100, return_sequences=True, consume_less='gpu'))
 model.add(Dropout(0.5))
-model.add(GRU(output_dim, return_sequences=True, activation='linear'))
+model.add(GRU(
+    output_dim,
+    return_sequences=True,
+    consume_less='gpu',
+    activation='linear'
+))
 
 optimizer = 'adamax'
 adamax = Adamax(lr=learning_rate, clipnorm=10)
