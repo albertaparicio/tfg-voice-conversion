@@ -21,7 +21,8 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 #######################
 # Batch shape
 batch_size = 200
-data_dim = 44 + 10 + 10
+output_dim = 44
+data_dim = output_dim + 10 + 10
 
 # Other constants
 epochs = 50
@@ -32,7 +33,7 @@ validation_fraction = 0.25
 #############
 # Load data #
 #############
-# Switch to decide if datatable must be build or can be loaded from a file
+# Switch to decide if datatable must be built or can be loaded from a file
 build_datatable = False
 
 print('Starting...')
@@ -117,7 +118,7 @@ model.add(RepeatVector(max_train_length))
 # Decoder layer
 model.add(GRU(100, return_sequences=True))
 model.add(Dropout(0.5))
-model.add(GRU(44, return_sequences=True, activation='linear'))
+model.add(GRU(output_dim, return_sequences=True, activation='linear'))
 
 optimizer = 'adamax'
 adamax = Adamax(lr=learning_rate, clipnorm=10)
