@@ -4,6 +4,7 @@
 #*.png
 #data/test/predicted/*
 data/test/predicted/
+data/test/s2s_predicted/
 
 /data/training/SM1/
 /data/training/SM2/
