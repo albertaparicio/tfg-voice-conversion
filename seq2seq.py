@@ -13,7 +13,7 @@ import tfglib.seq2seq_datatable as s2s
 from keras.layers import GRU, Dropout
 from keras.layers.core import RepeatVector
 from keras.models import Sequential
-from keras.optimizers import Adamax
+from keras.optimizers import Adam
 from tfglib.seq2seq_normalize import maxmin_scaling
 
 #######################
@@ -27,7 +27,7 @@ data_dim = output_dim + 10 + 10
 # Other constants
 epochs = 50
 # lahead = 1  # number of elements ahead that are used to make the prediction
-learning_rate = 0.002
+learning_rate = 0.001
 validation_fraction = 0.25
 
 #############
@@ -110,7 +110,7 @@ model = Sequential()
 
 # Encoder Layer
 model.add(GRU(100,
-              input_dim=(max_train_length, data_dim),
+              input_shape=(max_train_length, data_dim),
               return_sequences=False,
               consume_less='gpu'
               ))
@@ -126,10 +126,10 @@ model.add(GRU(
     activation='linear'
 ))
 
-optimizer = 'adamax'
-adamax = Adamax(lr=learning_rate, clipnorm=10)
+optimizer = 'adam'
+adam = Adam(clipnorm=10)
 loss = 'mse'
-model.compile(loss=loss, optimizer=adamax, sample_weight_mode="temporal")
+model.compile(loss=loss, optimizer=adam, sample_weight_mode="temporal")
 
 ###############
 # Train model #
