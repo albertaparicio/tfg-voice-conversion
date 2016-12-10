@@ -12,37 +12,10 @@ import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
 import tfglib.seq2seq_normalize as s2s_norm
-from keras.models import model_from_json
-from keras.optimizers import Adamax
-
-#############################
-# Load model and parameters #
-#############################
-with h5py.File('training_results/seq2seq_training_params.h5', 'r') as f:
-    epochs = f.attrs.get('epochs')
-    learning_rate = f.attrs.get('learning_rate')
-    optimizer = f.attrs.get('optimizer')
-    loss = f.attrs.get('loss')
-    train_speakers_max = f.attrs.get('train_speakers_max')
-    train_speakers_min = f.attrs.get('train_speakers_min')
-
-with open('models/seq2seq_' + loss.decode('utf-8') + '_' +
-          optimizer.decode('utf-8') + '_epochs_' + str(epochs) + '_lr_' +
-          str(learning_rate) + '_model.json', 'r'
-         ) as model_json:
-    seq2seq_model = model_from_json(model_json.read())
-
-seq2seq_model.load_weights('models/seq2seq_' + loss.decode('utf-8') + '_' +
-                           optimizer.decode('utf-8') + '_epochs_' +
-                           str(epochs) + '_lr_' + str(learning_rate) +
-                           '_weights.h5')
-
-adamax = Adamax(lr=learning_rate, clipnorm=10)
-seq2seq_model.compile(
-    loss=loss.decode('utf-8'),
-    optimizer=adamax,
-    sample_weight_mode="temporal"
-)
+from keras.layers import GRU, Dropout
+from keras.layers.core import RepeatVector
+from keras.models import Sequential
+from keras.optimizers import Adam
 
 ######################
 # Load test database #
@@ -59,6 +32,46 @@ print('Loading test datatable...', end='')
     'data/seq2seq_test_datatable.h5'
 )
 print('done')
+
+#############################
+# Load model and parameters #
+#############################
+with h5py.File('training_results/seq2seq_training_params.h5', 'r') as f:
+    epochs = f.attrs.get('epochs')
+    learning_rate = f.attrs.get('learning_rate')
+    optimizer = f.attrs.get('optimizer')
+    loss = f.attrs.get('loss')
+    train_speakers_max = f.attrs.get('train_speakers_max')
+    train_speakers_min = f.attrs.get('train_speakers_min')
+
+print('Re-initializing model')
+seq2seq_model = Sequential()
+
+# Encoder Layer
+seq2seq_model.add(GRU(100,
+                      input_dim=44 + 10 + 10,
+                      return_sequences=False,
+                      consume_less='gpu'
+                      ))
+seq2seq_model.add(RepeatVector(max_test_length))
+
+# Decoder layer
+seq2seq_model.add(GRU(100, return_sequences=True, consume_less='gpu'))
+seq2seq_model.add(Dropout(0.5))
+seq2seq_model.add(GRU(
+    44,
+    return_sequences=True,
+    consume_less='gpu',
+    activation='linear'
+))
+
+adam = Adam(clipnorm=10)
+seq2seq_model.compile(loss=loss.decode('utf-8'), optimizer=adam,
+                      sample_weight_mode="temporal")
+seq2seq_model.load_weights('models/seq2seq_' + loss.decode('utf-8') + '_' +
+                           optimizer.decode('utf-8') + '_epochs_' +
+                           str(epochs) + '_lr_' + str(learning_rate) +
+                           '_weights.h5')
 
 ##################
 # Load basenames #
@@ -91,8 +104,8 @@ for src_spk in speakers:
                 src_test_masks[i, :],
                 trg_test_datatable[i, :, :],
                 trg_test_masks[i, :],
-                test_speakers_max,
-                test_speakers_min
+                train_speakers_max,
+                train_speakers_min
             )[0]
 
             #################
@@ -125,7 +138,7 @@ for src_spk in speakers:
                 src_test_masks[i, :],
                 prediction[:, :, 0:42].reshape(-1, 42),
                 train_speakers_max,
-                train_speakers_min,
+                train_speakers_min
             )
 
             #####################################
@@ -150,8 +163,8 @@ for src_spk in speakers:
             # Save parameters to separate files #
             #####################################
             # Create destination directory before saving data
-            bashCommand = ('mkdir -p data/test/s2s_predicted/' + src_spk + '-' +
-                           trg_spk + '/')
+            bashCommand = ('mkdir -p data/test/s2s_predicted/' +
+                           src_spk + '-' + trg_spk + '/')
             process = subprocess.Popen(
                 bashCommand.split(),
                 stdout=subprocess.PIPE
