@@ -30,8 +30,10 @@ DIR_VOC=vocoded
 mkdir -p ${DIR_VOC}/${DIR_REF}
 mkdir -p ${DIR_VOC}/${DIR_TST}
 
-# Get list of files to align. Only pick common files between source and target directory
-diff ${DIR_REF} ${DIR_TST} | grep 'and' | cut -d '/' -f 2 | cut -d '.' -f 1 > basenames.list
+# # Get list of files to align. Only pick common files between source and target directory
+# diff ${DIR_REF} ${DIR_TST} | grep 'and' | cut -d '/' -f 2 | cut -d '.' -f 1 > basenames.list
+# Get list of files to align
+ls $DIR_REF | cut -d '.' -f 1 > basenames.list
 
 # Perform alignment on each file in basenames.list
 while read FILENAME <&3; do
