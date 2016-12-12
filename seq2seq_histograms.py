@@ -145,14 +145,21 @@ progress_bar = Progbar(target=trg_test_datatable.shape[2])
 progress_bar.update(0)
 # Predictions histograms
 for param_index in range(trg_test_datatable.shape[2]):
+    # Compute histogram
     hist, bins = np.histogram(predictions[:, :, param_index], bins=20)
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
     plt.bar(center, hist, align='center', width=width)
-    plt.savefig('training_results/seq2seq_' + loss.decode('utf-8') + '_' +
+
+    # Plot vertical line at mean
+    mean = np.mean(predictions[:, :, param_index])
+    plt.plot((mean, mean), (0, 1.1 * np.max(hist)), 'r', linewidth=2)
+
+    # Save histogram
+    plt.savefig('training_results/hist/seq2seq_' + loss.decode('utf-8') + '_' +
                 optimizer.decode('utf-8') + '_epochs_' + str(epochs) + '_lr_' +
-                str(learning_rate) + '_param_' + str(
-        param_index) + '_pred_hist.png',
+                str(learning_rate) + '_pred_param_' + str(
+        param_index) + '_hist.png',
                 bbox_inches='tight')
     plt.close()
 
@@ -164,14 +171,21 @@ progress_bar = Progbar(target=trg_test_datatable.shape[2])
 progress_bar.update(0)
 # Groundtruth histograms
 for param_index in range(trg_test_datatable.shape[2]):
+    # Compute histogram
     hist, bins = np.histogram(trg_test_datatable[:, :, param_index], bins=20)
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
     plt.bar(center, hist, align='center', width=width)
-    plt.savefig('training_results/seq2seq_' + loss.decode('utf-8') + '_' +
+
+    # Plot vertical line at mean
+    mean = np.mean(trg_test_datatable[:, :, param_index])
+    plt.plot((mean, mean), (0, 1.1 * np.max(hist)), 'r', linewidth=2)
+
+    # Save histogram
+    plt.savefig('training_results/hist/seq2seq_' + loss.decode('utf-8') + '_' +
                 optimizer.decode('utf-8') + '_epochs_' + str(epochs) + '_lr_' +
-                str(learning_rate) + '_param_' + str(
-        param_index) + '_gtrth_hist.png',
+                str(learning_rate) + '_gtrth_param_' + str(
+        param_index) + '_hist.png',
                 bbox_inches='tight')
     plt.close()
 
