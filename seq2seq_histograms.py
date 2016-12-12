@@ -16,6 +16,7 @@ from keras.layers import GRU, Dropout
 from keras.layers.core import RepeatVector
 from keras.models import Sequential
 from keras.optimizers import Adam
+from keras.utils.generic_utils import Progbar
 
 #######################
 # Sizes and constants #
@@ -138,18 +139,46 @@ for i in range(nb_sequences):
 ###################
 # Plot histograms #
 ###################
-for param_index in range(trg_test_datatable[2]):
-    # n, bins, patches = plt.hist(predictions[:, :, param_index])
-    # # add a 'best fit' line
-    # y = mlab.normpdf(bins, mu, sigma)
-    # plt.plot(bins, '')
+print('Computing prediction histograms...')
+progress_bar = Progbar(target=trg_test_datatable.shape[2])
 
-    hist, bins = np.histogram(predictions[:, :, param_index])
+progress_bar.update(0)
+# Predictions histograms
+for param_index in range(trg_test_datatable.shape[2]):
+    hist, bins = np.histogram(predictions[:, :, param_index], bins=20)
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
     plt.bar(center, hist, align='center', width=width)
     plt.savefig('training_results/seq2seq_' + loss.decode('utf-8') + '_' +
                 optimizer.decode('utf-8') + '_epochs_' + str(epochs) + '_lr_' +
-                str(learning_rate) + '_param_' + str(param_index) + '_hist.png',
+                str(learning_rate) + '_param_' + str(
+        param_index) + '_pred_hist.png',
                 bbox_inches='tight')
-    # plt.show()
+    plt.close()
+
+    progress_bar.update(param_index + 1)
+
+print('\n' + 'Computing ground truth histograms...')
+progress_bar = Progbar(target=trg_test_datatable.shape[2])
+
+progress_bar.update(0)
+# Groundtruth histograms
+for param_index in range(trg_test_datatable.shape[2]):
+    hist, bins = np.histogram(trg_test_datatable[:, :, param_index], bins=20)
+    width = 0.7 * (bins[1] - bins[0])
+    center = (bins[:-1] + bins[1:]) / 2
+    plt.bar(center, hist, align='center', width=width)
+    plt.savefig('training_results/seq2seq_' + loss.decode('utf-8') + '_' +
+                optimizer.decode('utf-8') + '_epochs_' + str(epochs) + '_lr_' +
+                str(learning_rate) + '_param_' + str(
+        param_index) + '_gtrth_hist.png',
+                bbox_inches='tight')
+    plt.close()
+
+    progress_bar.update(param_index + 1)
+
+print('\n' + '========================' +
+      '\n' + '======= FINISHED =======' +
+      '\n' + '========================')
+
+exit()
