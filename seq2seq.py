@@ -21,11 +21,13 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 # Sizes and constants #
 #######################
 # Batch shape
+# batch_size = 2
 batch_size = 200
 output_dim = 44
 data_dim = output_dim + 10 + 10
 
 # Other constants
+# nb_epochs = 2
 nb_epochs = 50
 # lahead = 1  # number of elements ahead that are used to make the prediction
 learning_rate = 0.001
@@ -106,6 +108,16 @@ for i in range(src_train_datatable.shape[0]):
 ################################################
 # Split data into training and validation sets #
 ################################################
+# ###################################
+# # TODO ELIMINATE AFTER DEVELOPING #
+# ###################################
+# num = 10
+# src_train_datatable = src_train_datatable[0:num]
+# src_train_masks = src_train_masks[0:num]
+# trg_train_datatable = trg_train_datatable[0:num]
+# trg_train_masks = trg_train_masks[0:num]
+# #################################################
+
 src_train_data = src_train_datatable[0:int(np.floor(
     src_train_datatable.shape[0] * (1 - validation_fraction)))]
 src_valid_data = src_train_datatable[int(np.floor(
