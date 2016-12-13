@@ -9,7 +9,6 @@ import numpy as np
 from ahoproc_tools.error_metrics import RMSE
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
-from matplotlib import pyplot as plt
 from tfglib.utils import apply_context
 
 # TODO Plot loss curve

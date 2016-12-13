@@ -12,7 +12,6 @@ from keras.layers import LSTM, Dense
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Sequential
 from keras.optimizers import RMSprop
-
 from tfglib import construct_table as ct
 from tfglib import utils
 

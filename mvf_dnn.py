@@ -13,7 +13,6 @@ from keras.layers import Dense, Dropout
 from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Sequential
 from keras.optimizers import RMSprop
-
 from tfglib import construct_table as ct
 from tfglib.utils import apply_context
 
@@ -87,11 +86,15 @@ src_train_std = np.std(src_train_frames[:, 0], axis=0)
 trg_train_mean = np.mean(trg_train_frames[:, 0], axis=0)
 trg_train_std = np.std(trg_train_frames[:, 0], axis=0)
 
-src_train_frames[:, 0] = (src_train_frames[:, 0] - src_train_mean) / src_train_std
-src_valid_frames[:, 0] = (src_valid_frames[:, 0] - src_train_mean) / src_train_std
+src_train_frames[:, 0] = (src_train_frames[:, 0] -
+                          src_train_mean) / src_train_std
+src_valid_frames[:, 0] = (src_valid_frames[:, 0] -
+                          src_train_mean) / src_train_std
 
-trg_train_frames[:, 0] = (trg_train_frames[:, 0] - trg_train_mean) / trg_train_std
-trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
+trg_train_frames[:, 0] = (trg_train_frames[:, 0] -
+                          trg_train_mean) / trg_train_std
+trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] -
+                          trg_train_mean) / trg_train_std
 
 # Save training statistics
 with h5py.File('models/mvf_train_stats.h5', 'w') as f:
