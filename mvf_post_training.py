@@ -6,11 +6,9 @@ from __future__ import print_function
 
 import h5py
 import numpy as np
+from ahoproc_tools.error_metrics import RMSE
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
-from matplotlib import pyplot as plt
-
-from ahoproc_tools.error_metrics import RMSE
 from tfglib.utils import apply_context
 
 # TODO Plot loss curve
@@ -19,8 +17,8 @@ from tfglib.utils import apply_context
 # Sizes and constants #
 #######################
 batch_size = 300
-nb_epochs = 50
-learning_rate = 0.001
+nb_epochs = 700
+learning_rate = 0.00000055
 context_size = 1
 
 ##############
@@ -86,11 +84,11 @@ rmse_test = RMSE(
 
 print('Test RMSE: ', rmse_test)
 
-# Histogram of predicted training data and training data itself
-plt.hist(prediction[:, 0], bins=100)
-plt.title('Prediction frames')
-plt.savefig('prediction_hist.png', bbox_inches='tight')
-plt.show()
+# # Histogram of predicted training data and training data itself
+# plt.hist(prediction[:, 0], bins=100)
+# plt.title('Prediction frames')
+# plt.savefig('prediction_hist.png', bbox_inches='tight')
+# plt.show()
 
 # # Histogram of training samples
 # plt.figure()
@@ -98,5 +96,9 @@ plt.show()
 # plt.title('Training target frames')
 # plt.savefig('gtruth_hist.png', bbox_inches='tight')
 # plt.show()
+
+print('========================' + '\n' +
+      '======= FINISHED =======' + '\n' +
+      '========================')
 
 exit()

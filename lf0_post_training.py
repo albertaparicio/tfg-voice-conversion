@@ -8,11 +8,10 @@ from __future__ import print_function
 
 import h5py
 import numpy as np
+from ahoproc_tools.error_metrics import RMSE, AFPR
 from keras.models import model_from_json
 from scipy.stats import pearsonr
-
 from tfglib import utils
-from ahoproc_tools.error_metrics import RMSE, AFPR
 
 #######################
 # Sizes and constants #
@@ -55,7 +54,10 @@ src_test_frames = np.column_stack((test_data[:, 40], test_data[:, 42]))
 src_test_frames[:, 0] = (src_test_frames[:, 0] - src_train_mean) / src_train_std
 src_test_frames = utils.reshape_lstm(src_test_frames, tsteps, data_dim)
 
-trg_test_frames = np.column_stack((test_data[:, 83], test_data[:, 85]))
+# Zero-pad and reshape target test data
+trg_test_frames = utils.reshape_lstm(
+    np.column_stack((test_data[:, 83], test_data[:, 85])), tsteps,
+    data_dim).reshape(-1, 2)
 
 print('done')
 
@@ -99,3 +101,7 @@ print('Accuracy: ', accuracy[0] * 100, '%')
 print('F-measure: ', accuracy[1] * 100, '%')
 print('Precision: ', accuracy[2] * 100, '%')
 print('Recall: ', accuracy[3] * 100, '%')
+
+print('========================' + '\n' +
+      '======= FINISHED =======' + '\n' +
+      '========================')

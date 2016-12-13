@@ -16,7 +16,7 @@ data/test/s2s_predicted/
 /data/training/TM3/
 /data/training/TM2/
 /data/training/TM1/
-
+/data/training/dtw/
 /data/training/vocoded/
 /data/training/vocoded_s2s/
 
@@ -30,7 +30,7 @@ data/test/s2s_predicted/
 /data/test/TF2/
 /data/test/SF2/
 /data/test/TF1/
-
+/data/test/dtw/
 /data/test/vocoded/
 /data/test/vocoded_s2s/
 
