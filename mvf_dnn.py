@@ -1,7 +1,7 @@
 # Created by albert aparicio on 18/10/16
 # coding: utf-8
 
-# This is a script for initializing and training a fully-connected DNN for MVF mapping
+# This is a script for initializing and training a fully-connected DNN
 
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
@@ -64,8 +64,8 @@ else:
 # Sizes and constants #
 #######################
 batch_size = 300
-nb_epochs = 400
-learning_rate = 0.000001
+nb_epochs = 700
+learning_rate = 0.00000055
 context_size = 1
 
 ################

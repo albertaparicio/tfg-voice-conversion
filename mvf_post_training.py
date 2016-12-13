@@ -18,8 +18,8 @@ from tfglib.utils import apply_context
 # Sizes and constants #
 #######################
 batch_size = 300
-nb_epochs = 50
-learning_rate = 0.001
+nb_epochs = 700
+learning_rate = 0.00000055
 context_size = 1
 
 ##############
@@ -85,11 +85,11 @@ rmse_test = RMSE(
 
 print('Test RMSE: ', rmse_test)
 
-# Histogram of predicted training data and training data itself
-plt.hist(prediction[:, 0], bins=100)
-plt.title('Prediction frames')
-plt.savefig('training_results/mvf_prediction_hist.png', bbox_inches='tight')
-plt.show()
+# # Histogram of predicted training data and training data itself
+# plt.hist(prediction[:, 0], bins=100)
+# plt.title('Prediction frames')
+# plt.savefig('prediction_hist.png', bbox_inches='tight')
+# plt.show()
 
 # # Histogram of training samples
 # plt.figure()

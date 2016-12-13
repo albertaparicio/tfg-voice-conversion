@@ -74,24 +74,26 @@ else:
 ################
 # Prepare data #
 ################
+# Number of training samples
+nb_samples = 14500
 # Take lfo and U/V flag columns
 src_train_data = np.column_stack(
-    (train_data[0:17500, 40],
-     train_data[0:17500, 42])
+    (train_data[0:nb_samples, 40],
+     train_data[0:nb_samples, 42])
 )  # Source data
 
 trg_train_data = np.column_stack(
-    (train_data[0:17500, 83],
-     train_data[0:17500, 85])
+    (train_data[0:nb_samples, 83],
+     train_data[0:nb_samples, 85])
 )  # Target data
 
 src_valid_data = np.column_stack(
-    (train_data[17500:train_data.shape[0], 40],
-     train_data[17500:train_data.shape[0], 42])
+    (train_data[nb_samples:train_data.shape[0], 40],
+     train_data[nb_samples:train_data.shape[0], 42])
 )  # Source data
 trg_valid_data = np.column_stack(
-    (train_data[17500:train_data.shape[0], 83],
-     train_data[17500:train_data.shape[0], 85])
+    (train_data[nb_samples:train_data.shape[0], 83],
+     train_data[nb_samples:train_data.shape[0], 85])
 )  # Target data
 
 src_test_data = np.column_stack((test_data[:, 40], test_data[:, 42]))
