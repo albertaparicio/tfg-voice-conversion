@@ -133,9 +133,7 @@ for src_spk in speakers:
             prediction = seq2seq_model.predict(
                 it_sequence.reshape(1, -1, it_sequence.shape[1]))
 
-            ######################
-            # Unscale parameters #
-            ######################
+            # Unscale parameters
             prediction[:, :, 0:42] = s2s_norm.unscale_prediction(
                 src_test_datatable[i, :, :],
                 src_test_masks[i, :],
@@ -144,9 +142,7 @@ for src_spk in speakers:
                 train_speakers_min
             )
 
-            #####################################
-            # Reshape prediction into 2D matrix #
-            #####################################
+            # Reshape prediction into 2D matrix
             prediction = prediction.reshape(-1, 44)
 
             ###################
@@ -154,13 +150,26 @@ for src_spk in speakers:
             ###################
             prediction[:, 42] = np.round(prediction[:, 42])
 
-            ##################################
-            # Apply u/v flags to lf0 and mvf #
-            ##################################
+            # Apply u/v flags to lf0 and mvf
             for index, entry in enumerate(prediction[:, 42]):
                 if entry == 0:
                     prediction[index, 40] = -1e+10  # lf0
                     prediction[index, 41] = 0  # mvf
+
+            ##################################################
+            # Un-zero-pad according to End-Of-Sequence flags #
+            ##################################################
+            # Round EOS flags
+            prediction[:, 43] = np.round(prediction[:, 43])
+
+            # Find EOS flag
+            eos_flag_index = int(np.nonzero(prediction[:, 43])[0])
+
+            # Remove all frames after the EOS flag
+            prediction = prediction[0:eos_flag_index + 1, :]
+
+            # Check that the last EOS parameter is the flag
+            assert prediction[-1, 43] == 1
 
             #####################################
             # Save parameters to separate files #
