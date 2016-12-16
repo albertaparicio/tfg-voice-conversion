@@ -66,12 +66,14 @@ seq2seq_model.add(GRU(
 ))
 
 adam = Adam(clipnorm=10)
-seq2seq_model.compile(loss=loss.decode('utf-8'), optimizer=adam,
-                      sample_weight_mode="temporal")
+# seq2seq_model.compile(loss=loss.decode('utf-8'), optimizer=adam,
+                      # sample_weight_mode="temporal")
 seq2seq_model.load_weights('models/seq2seq_' + loss.decode('utf-8') + '_' +
                            optimizer.decode('utf-8') + '_epochs_' +
                            str(epochs) + '_lr_' + str(learning_rate) +
                            '_weights.h5')
+seq2seq_model.compile(loss=loss.decode('utf-8'), optimizer=adam,
+                      sample_weight_mode="temporal")
 
 ##################
 # Load basenames #
