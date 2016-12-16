@@ -14,18 +14,21 @@ from keras.layers import GRU, Dropout
 from keras.layers.core import RepeatVector
 from keras.models import Sequential
 from keras.optimizers import Adam
+from keras.utils.generic_utils import Progbar
 from tfglib.seq2seq_normalize import maxmin_scaling
 
 #######################
 # Sizes and constants #
 #######################
 # Batch shape
+# batch_size = 2
 batch_size = 200
 output_dim = 44
 data_dim = output_dim + 10 + 10
 
 # Other constants
-epochs = 50
+# nb_epochs = 2
+nb_epochs = 50
 # lahead = 1  # number of elements ahead that are used to make the prediction
 learning_rate = 0.001
 validation_fraction = 0.25
@@ -102,6 +105,34 @@ for i in range(src_train_datatable.shape[0]):
         train_speakers_min
     )
 
+################################################
+# Split data into training and validation sets #
+################################################
+# ###################################
+# # TODO ELIMINATE AFTER DEVELOPING #
+# ###################################
+# num = 10
+# src_train_datatable = src_train_datatable[0:num]
+# src_train_masks = src_train_masks[0:num]
+# trg_train_datatable = trg_train_datatable[0:num]
+# trg_train_masks = trg_train_masks[0:num]
+# #################################################
+
+src_train_data = src_train_datatable[0:int(np.floor(
+    src_train_datatable.shape[0] * (1 - validation_fraction)))]
+src_valid_data = src_train_datatable[int(np.floor(
+    src_train_datatable.shape[0] * (1 - validation_fraction))):]
+
+trg_train_data = trg_train_datatable[0:int(np.floor(
+    trg_train_datatable.shape[0] * (1 - validation_fraction)))]
+trg_train_masks_f = trg_train_masks[0:int(np.floor(
+    trg_train_masks.shape[0] * (1 - validation_fraction)))]
+
+trg_valid_data = trg_train_datatable[int(np.floor(
+    trg_train_datatable.shape[0] * (1 - validation_fraction))):]
+trg_valid_masks_f = trg_train_masks[int(np.floor(
+    trg_train_masks.shape[0] * (1 - validation_fraction))):]
+
 ################
 # Define Model #
 ################
@@ -134,23 +165,60 @@ model.compile(loss=loss, optimizer=adam, sample_weight_mode="temporal")
 ###############
 # Train model #
 ###############
-print('Training')
-history = model.fit(src_train_datatable,
-                    trg_train_datatable,
-                    batch_size=batch_size,
-                    verbose=1,
-                    nb_epoch=epochs,
-                    shuffle=False,
-                    validation_split=validation_fraction,
-                    sample_weight=trg_train_masks)
+print('Training\n' + '=' * 8 * 5)
+
+training_history = []
+validation_history = []
+
+for epoch in range(nb_epochs):
+    print('Epoch {} of {}'.format(epoch + 1, nb_epochs))
+
+    nb_batches = int(src_train_data.shape[0] / batch_size)
+    progress_bar = Progbar(target=nb_batches)
+
+    epoch_train_partial_loss = []
+
+    progress_bar.update(0)
+    for index in range(nb_batches):
+        # Get batch of sequences and masks
+        src_batch = src_train_data[
+                    index * batch_size:(index + 1) * batch_size]
+        trg_batch = trg_train_data[
+                    index * batch_size:(index + 1) * batch_size]
+        batch_masks = trg_train_masks_f[
+                      index * batch_size:(index + 1) * batch_size]
+
+        epoch_train_partial_loss.append(
+            model.train_on_batch(src_batch, trg_batch,
+                                 sample_weight=batch_masks))
+
+        progress_bar.update(index + 1)
+
+    epoch_val_loss = model.evaluate(src_valid_data, trg_valid_data,
+                                    batch_size=batch_size,
+                                    sample_weight=trg_valid_masks_f,
+                                    verbose=0)
+
+    epoch_train_loss = np.mean(np.array(epoch_train_partial_loss), axis=0)
+
+    training_history.append(epoch_train_loss)
+    validation_history.append(epoch_val_loss)
+
+    # Generate epoch report
+    print('loss: ' + str(training_history[-1]) +
+          ' - val_loss: ' + str(validation_history[-1]) +
+          '\n'  # + '-' * 24
+          )
+    print()
 
 print('Saving model')
 model.save_weights('models/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
-                   str(epochs) + '_lr_' + str(learning_rate) +
+                   str(nb_epochs) + '_lr_' + str(learning_rate) +
                    '_weights.h5')
 
 with open('models/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
-          str(epochs) + '_lr_' + str(learning_rate) + '_model.json', 'w'
+          str(nb_epochs) + '_lr_' + str(learning_rate) + '_model.json',
+          'w'
           ) as model_json:
     model_json.write(model.to_json())
 
@@ -158,21 +226,21 @@ print('Saving training parameters')
 with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
     f.attrs.create('loss', np.string_(loss))
     f.attrs.create('optimizer', np.string_(optimizer))
-    f.attrs.create('epochs', epochs, dtype=int)
+    f.attrs.create('epochs', nb_epochs, dtype=int)
     f.attrs.create('learning_rate', learning_rate)
     f.attrs.create('train_speakers_max', train_speakers_max)
     f.attrs.create('train_speakers_min', train_speakers_min)
 
 print('Saving training results')
 np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
-           str(epochs) + '_lr_' + str(learning_rate) +
-           '_epochs.csv', history.epoch, delimiter=',')
+           str(nb_epochs) + '_lr_' + str(learning_rate) +
+           '_epochs.csv', np.arange(nb_epochs), delimiter=',')
 np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
-           str(epochs) + '_lr_' + str(learning_rate) +
-           '_loss.csv', history.history['loss'], delimiter=',')
+           str(nb_epochs) + '_lr_' + str(learning_rate) +
+           '_loss.csv', training_history, delimiter=',')
 np.savetxt('training_results/seq2seq_' + loss + '_' + optimizer + '_epochs_' +
-           str(epochs) + '_lr_' + str(learning_rate) +
-           '_val_loss.csv', history.history['val_loss'], delimiter=',')
+           str(nb_epochs) + '_lr_' + str(learning_rate) +
+           '_val_loss.csv', validation_history, delimiter=',')
 
 print('========================' + '\n' +
       '======= FINISHED =======' + '\n' +
