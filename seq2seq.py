@@ -10,8 +10,7 @@ from __future__ import print_function
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
-from keras.layers import GRU, Dropout
-from keras.layers import Input
+from keras.layers import GRU, Dropout, TimeDistributed, Input, Dense
 from keras.layers.core import RepeatVector
 from keras.models import Model
 from keras.optimizers import Adam
@@ -22,13 +21,11 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 # Sizes and constants #
 #######################
 # Batch shape
-# batch_size = 2
 batch_size = 200
 output_dim = 44
 data_dim = output_dim + 10 + 10
 
 # Other constants
-# nb_epochs = 2
 nb_epochs = 50
 # lahead = 1  # number of elements ahead that are used to make the prediction
 learning_rate = 0.001
@@ -112,6 +109,9 @@ for i in range(src_train_datatable.shape[0]):
 # ###################################
 # # TODO ELIMINATE AFTER DEVELOPING #
 # ###################################
+# batch_size = 2
+# nb_epochs = 2
+#
 # num = 10
 # src_train_datatable = src_train_datatable[0:num]
 # src_train_masks = src_train_masks[0:num]
@@ -144,7 +144,7 @@ main_input = Input(shape=(max_train_length, data_dim),
                    )
 encoder_GRU = GRU(
     output_dim=100,
-    input_shape=(max_train_length, data_dim),
+    # input_shape=(max_train_length, data_dim),
     return_sequences=False,
     consume_less='gpu'
 )(main_input)
@@ -163,12 +163,13 @@ parameters_GRU = GRU(
     name='params_output'
 )(dropout_layer)
 
-flags_GRU = GRU(
+flags_GRU = TimeDistributed(Dense(
     2,
-    consume_less='gpu',
+    # consume_less='gpu',
     activation='sigmoid',
-    name='flags_output'
-)(dropout_layer)
+    # TODO rename layer
+    # name='flags_output'
+),name='flags_output')(dropout_layer)
 
 model = Model(input=main_input, output=[parameters_GRU, flags_GRU])
 
@@ -199,7 +200,11 @@ for epoch in range(nb_epochs):
 
     epoch_train_partial_loss = []
 
-    progress_bar.update(0)
+    try:
+        progress_bar.update(0)
+    except OverflowError as err:
+        raise Exception('nb_batches is 0. Please check the training data')
+
     for index in range(nb_batches):
         # Get batch of sequences and masks
         src_batch = src_train_data[
@@ -212,9 +217,10 @@ for epoch in range(nb_epochs):
         epoch_train_partial_loss.append(
             model.train_on_batch(
                 {'main_input': src_batch},
-                {'params_output': trg_batch[:, 0:42],
-                 'flags_output': trg_batch[:, 42:44]},
-                sample_weight=batch_masks
+                {'params_output': trg_batch[:, :, 0:42],
+                 'flags_output': trg_batch[:, :, 42:44]},
+                sample_weight={'params_output': batch_masks,
+                               'flags_output': batch_masks}
             )
         )
 
@@ -222,10 +228,11 @@ for epoch in range(nb_epochs):
 
     epoch_val_loss = model.evaluate(
         src_valid_data,
-        {'params_output': trg_valid_data[:, 0:42],
-         'flags_output': trg_valid_data[:, 42:44]},
+        {'params_output': trg_valid_data[:, :, 0:42],
+         'flags_output': trg_valid_data[:, :, 42:44]},
         batch_size=batch_size,
-        sample_weight=trg_valid_masks_f,
+        sample_weight={'params_output': trg_valid_masks_f,
+                       'flags_output': trg_valid_masks_f},
         verbose=0
     )
 
@@ -250,8 +257,8 @@ model.save_weights(
     '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) + '_weights.h5')
 
 with open('models/seq2seq_' + params_loss + '_' + flags_loss + '_' +
-          optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-          str(learning_rate) + '_model.json', 'w'
+                  optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+                  str(learning_rate) + '_model.json', 'w'
           ) as model_json:
     model_json.write(model.to_json())
 
