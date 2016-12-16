@@ -65,13 +65,12 @@ seq2seq_model.add(GRU(
     activation='linear'
 ))
 
-adam = Adam(clipnorm=10)
-# seq2seq_model.compile(loss=loss.decode('utf-8'), optimizer=adam,
-                      # sample_weight_mode="temporal")
 seq2seq_model.load_weights('models/seq2seq_' + loss.decode('utf-8') + '_' +
                            optimizer.decode('utf-8') + '_epochs_' +
                            str(epochs) + '_lr_' + str(learning_rate) +
                            '_weights.h5')
+
+adam = Adam(clipnorm=10)
 seq2seq_model.compile(loss=loss.decode('utf-8'), optimizer=adam,
                       sample_weight_mode="temporal")
 
@@ -110,27 +109,29 @@ for src_spk in speakers:
                 train_speakers_min
             )[0]
 
-            #################
-            # Mask sequence #
-            #################
-            masked_sequence = s2s_norm.mask_data(
-                src_test_datatable[i, :, :],
-                src_test_masks[i, :]
-            )
-
-            #######################
-            # Get only valid data #
-            #######################
-            valid_sequence = masked_sequence[~masked_sequence.mask].reshape(
-                (1,
-                 -1,
-                 masked_sequence.shape[1])
-            )
+            # #################
+            # # Mask sequence #
+            # #################
+            # masked_sequence = s2s_norm.mask_data(
+            #     src_test_datatable[i, :, :],
+            #     src_test_masks[i, :]
+            # )
+            #
+            # #######################
+            # # Get only valid data #
+            # #######################
+            # valid_sequence = masked_sequence[~masked_sequence.mask].reshape(
+            #     (1,
+            #      -1,
+            #      masked_sequence.shape[1])
+            # )
 
             ######################
             # Predict parameters #
             ######################
-            prediction = seq2seq_model.predict(valid_sequence)
+            it_sequence = src_test_datatable[i, :, :]
+            prediction = seq2seq_model.predict(
+                it_sequence.reshape(1, -1, it_sequence.shape[1]))
 
             ######################
             # Unscale parameters #
