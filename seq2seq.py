@@ -10,12 +10,19 @@ from __future__ import print_function
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
-from keras.layers import GRU, Dropout, TimeDistributed, Input, Dense
-from keras.layers.core import RepeatVector
+from keras.layers import BatchNormalization, GRU, Dropout
+from keras.layers import Input, TimeDistributed, Dense
+from keras.layers.advanced_activations import LeakyReLU
+from keras.layers.core import RepeatVector, Activation
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.utils.generic_utils import Progbar
 from tfglib.seq2seq_normalize import maxmin_scaling
+from time import time
+from tfglib.utils import display_time
+
+# Save training start time
+start_time = time()
 
 #######################
 # Sizes and constants #
@@ -24,6 +31,7 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 batch_size = 200
 output_dim = 44
 data_dim = output_dim + 10 + 10
+emb_size = 256
 
 # Other constants
 nb_epochs = 50
@@ -140,18 +148,22 @@ trg_valid_masks_f = trg_train_masks[int(np.floor(
 print('Initializing model\n' + '=' * 8 * 5)
 main_input = Input(shape=(max_train_length, data_dim),
                    dtype='float32',
-                   name='main_input'
-                   )
+                   name='main_input')
+
+emb_a = TimeDistributed(Dense(emb_size))(main_input)
+emb_bn = BatchNormalization()(emb_a)
+emb_h = Activation(LeakyReLU())(emb_bn)
+
 encoder_GRU = GRU(
-    output_dim=100,
+    output_dim=256,
     # input_shape=(max_train_length, data_dim),
     return_sequences=False,
     consume_less='gpu'
-)(main_input)
+)(emb_h)
 
 repeat_layer = RepeatVector(max_train_length)(encoder_GRU)
 
-decoder_GRU = GRU(100, return_sequences=True, consume_less='gpu')(repeat_layer)
+decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(repeat_layer)
 
 dropout_layer = Dropout(0.5)(decoder_GRU)
 
@@ -163,18 +175,15 @@ parameters_GRU = GRU(
     name='params_output'
 )(dropout_layer)
 
-flags_GRU = TimeDistributed(Dense(
+flags_Dense = TimeDistributed(Dense(
     2,
-    # consume_less='gpu',
     activation='sigmoid',
-    # TODO rename layer
-    # name='flags_output'
 ), name='flags_output')(dropout_layer)
 
-model = Model(input=main_input, output=[parameters_GRU, flags_GRU])
+model = Model(input=main_input, output=[parameters_GRU, flags_Dense])
 
 optimizer_name = 'adam'
-adam = Adam(clipnorm=10)
+adam = Adam(clipnorm=5)
 params_loss = 'mse'
 flags_loss = 'binary_crossentropy'
 
@@ -257,8 +266,8 @@ model.save_weights(
     '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) + '_weights.h5')
 
 with open('models/seq2seq_' + params_loss + '_' + flags_loss + '_' +
-                  optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-                  str(learning_rate) + '_model.json', 'w'
+          optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+          str(learning_rate) + '_model.json', 'w'
           ) as model_json:
     model_json.write(model.to_json())
 
@@ -290,5 +299,8 @@ np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
 print('========================' + '\n' +
       '======= FINISHED =======' + '\n' +
       '========================')
+
+end_time = time()
+print('Elapsed time: ' + display_time(end_time - start_time))
 
 exit()
