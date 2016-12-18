@@ -7,18 +7,19 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+from time import time
+
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
 from keras.layers import BatchNormalization, GRU, Dropout
 from keras.layers import Input, TimeDistributed, Dense
 from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.core import RepeatVector, Activation
+from keras.layers.core import RepeatVector
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.utils.generic_utils import Progbar
 from tfglib.seq2seq_normalize import maxmin_scaling
-from time import time
 from tfglib.utils import display_time
 
 # Save training start time
@@ -152,7 +153,8 @@ main_input = Input(shape=(max_train_length, data_dim),
 
 emb_a = TimeDistributed(Dense(emb_size))(main_input)
 emb_bn = BatchNormalization()(emb_a)
-emb_h = Activation(LeakyReLU())(emb_bn)
+# emb_h = Activation(LeakyReLU(name='LeakyReLu'), name='emb_activation')(emb_bn)
+emb_h = LeakyReLU()(emb_bn)
 
 encoder_GRU = GRU(
     output_dim=256,
@@ -280,7 +282,7 @@ with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
     f.attrs.create('learning_rate', learning_rate)
     f.attrs.create('train_speakers_max', train_speakers_max)
     f.attrs.create('train_speakers_min', train_speakers_min)
-    f.attrs.create('metrics_names', model.metrics_names)
+    f.attrs.create('metrics_names', np.string_(model.metrics_names))
 
 print('Saving training results')
 np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
