@@ -29,7 +29,7 @@ start_time = time()
 # Sizes and constants #
 #######################
 # Batch shape
-batch_size = 200
+batch_size = 100
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
