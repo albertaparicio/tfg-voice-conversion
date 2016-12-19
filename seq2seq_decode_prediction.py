@@ -187,13 +187,15 @@ for src_spk in speakers:
             prediction[:, 43] = np.round(prediction[:, 43])
 
             # Find EOS flag
-            eos_flag_index = int(np.nonzero(prediction[:, 43])[0])
+            print(np.sum(prediction[:,43]))
+
+            # eos_flag_index = int(np.nonzero(prediction[:, 43])[0])
 
             # Remove all frames after the EOS flag
-            prediction = prediction[0:eos_flag_index + 1, :]
+            # prediction = prediction[0:eos_flag_index + 1, :]
 
             # Check that the last EOS parameter is the flag
-            assert prediction[-1, 43] == 1
+            # assert prediction[-1, 43] == 1
 
             #####################################
             # Save parameters to separate files #
