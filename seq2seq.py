@@ -282,7 +282,10 @@ with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
     f.attrs.create('learning_rate', learning_rate)
     f.attrs.create('train_speakers_max', train_speakers_max)
     f.attrs.create('train_speakers_min', train_speakers_min)
-    f.attrs.create('metrics_names', np.string_(model.metrics_names))
+    f.attrs.create(
+        'metrics_names',
+        [np.string_(name) for name in model.metrics_names]
+    )
 
 print('Saving training results')
 np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +

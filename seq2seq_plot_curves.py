@@ -13,7 +13,10 @@ with h5py.File('training_results/seq2seq_training_params.h5', 'r') as f:
     optimizer_name = f.attrs.get('optimizer').decode('utf-8')
     nb_epochs = f.attrs.get('epochs')
     learning_rate = f.attrs.get('learning_rate')
-    metrics_names = f.attrs.get('metrics_names')
+    metrics_names = [name.decode('utf-8') for name in
+                     f.attrs.get('metrics_names')]
+
+    f.close()
 
 epoch = np.loadtxt('training_results/seq2seq_' + params_loss + '_' +
                    flags_loss + '_' + optimizer_name + '_epochs_' +
