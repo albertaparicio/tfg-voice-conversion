@@ -12,9 +12,11 @@ import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
 import tfglib.seq2seq_normalize as s2s_norm
-from keras.layers import GRU, Dropout
+from keras.layers import BatchNormalization, GRU, Dropout
+from keras.layers import Input, TimeDistributed, Dense
+from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.core import RepeatVector
-from keras.models import Sequential
+from keras.models import Model
 from keras.optimizers import Adam
 
 ######################
@@ -37,42 +39,60 @@ print('done')
 # Load model and parameters #
 #############################
 with h5py.File('training_results/seq2seq_training_params.h5', 'r') as f:
-    epochs = f.attrs.get('epochs')
+    params_loss = f.attrs.get('params_loss').decode('utf-8')
+    flags_loss = f.attrs.get('flags_loss').decode('utf-8')
+    optimizer_name = f.attrs.get('optimizer').decode('utf-8')
+    nb_epochs = f.attrs.get('epochs')
     learning_rate = f.attrs.get('learning_rate')
-    optimizer = f.attrs.get('optimizer')
-    loss = f.attrs.get('loss')
     train_speakers_max = f.attrs.get('train_speakers_max')
     train_speakers_min = f.attrs.get('train_speakers_min')
 
 print('Re-initializing model')
-seq2seq_model = Sequential()
+output_dim = 44
+data_dim = output_dim + 10 + 10
+emb_size = 256
 
-# Encoder Layer
-seq2seq_model.add(GRU(100,
-                      input_dim=44 + 10 + 10,
-                      return_sequences=False,
-                      consume_less='gpu'
-                      ))
-seq2seq_model.add(RepeatVector(max_test_length))
+main_input = Input(shape=(max_test_length, data_dim),
+                   dtype='float32',
+                   name='main_input')
 
-# Decoder layer
-seq2seq_model.add(GRU(100, return_sequences=True, consume_less='gpu'))
-seq2seq_model.add(Dropout(0.5))
-seq2seq_model.add(GRU(
-    44,
+emb_a = TimeDistributed(Dense(emb_size))(main_input)
+emb_bn = BatchNormalization()(emb_a)
+emb_h = LeakyReLU()(emb_bn)
+
+encoder_GRU = GRU(
+    output_dim=256,
+    return_sequences=False,
+    consume_less='gpu'
+)(emb_h)
+
+repeat_layer = RepeatVector(max_test_length)(encoder_GRU)
+
+decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(repeat_layer)
+
+dropout_layer = Dropout(0.5)(decoder_GRU)
+
+parameters_GRU = GRU(
+    output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
-    activation='linear'
-))
+    activation='linear',
+    name='params_output'
+)(dropout_layer)
 
-seq2seq_model.load_weights('models/seq2seq_' + loss.decode('utf-8') + '_' +
-                           optimizer.decode('utf-8') + '_epochs_' +
-                           str(epochs) + '_lr_' + str(learning_rate) +
-                           '_weights.h5')
+flags_Dense = TimeDistributed(Dense(
+    2,
+    activation='sigmoid',
+), name='flags_output')(dropout_layer)
 
-adam = Adam(clipnorm=10)
-seq2seq_model.compile(loss=loss.decode('utf-8'), optimizer=adam,
-                      sample_weight_mode="temporal")
+seq2seq_model = Model(input=main_input, output=[parameters_GRU, flags_Dense])
+
+adam = Adam(clipnorm=5)
+seq2seq_model.compile(optimizer=adam,
+                      loss={'params_output': params_loss,
+                            'flags_output': flags_loss},
+                      sample_weight_mode="temporal"
+                      )
 
 ##################
 # Load basenames #
@@ -130,7 +150,11 @@ for src_spk in speakers:
             # Predict parameters #
             ######################
             it_sequence = src_test_datatable[i, :, :]
-            prediction = seq2seq_model.predict(
+
+            prediction = np.empty((1, max_test_length, output_dim))
+
+            [prediction[:, :, 0:42],
+             prediction[:, :, 42:44]] = seq2seq_model.predict(
                 it_sequence.reshape(1, -1, it_sequence.shape[1]))
 
             # Unscale parameters
@@ -143,7 +167,7 @@ for src_spk in speakers:
             )
 
             # Reshape prediction into 2D matrix
-            prediction = prediction.reshape(-1, 44)
+            prediction = prediction.reshape(-1, output_dim)
 
             ###################
             # Round u/v flags #
