@@ -7,7 +7,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
-with h5py.File('training_results/seq2seq_training_params.h5', 'r') as f:
+with h5py.File('training_results/seq2seq_feedback_training_params.h5', 'r') as f:
     params_loss = f.attrs.get('params_loss').decode('utf-8')
     flags_loss = f.attrs.get('flags_loss').decode('utf-8')
     optimizer_name = f.attrs.get('optimizer').decode('utf-8')
@@ -18,15 +18,15 @@ with h5py.File('training_results/seq2seq_training_params.h5', 'r') as f:
 
     f.close()
 
-epoch = np.loadtxt('training_results/seq2seq_' + params_loss + '_' +
+epoch = np.loadtxt('training_results/seq2seq_feedback_' + params_loss + '_' +
                    flags_loss + '_' + optimizer_name + '_epochs_' +
                    str(nb_epochs) + '_lr_' + str(learning_rate) + '_epochs.csv',
                    delimiter=',', skiprows=1)
-losses = np.loadtxt('training_results/seq2seq_' + params_loss + '_' +
+losses = np.loadtxt('training_results/seq2seq_feedback_' + params_loss + '_' +
                     flags_loss + '_' + optimizer_name + '_epochs_' +
                     str(nb_epochs) + '_lr_' + str(learning_rate) +
                     '_loss.csv', delimiter=',', skiprows=1)
-val_losses = np.loadtxt('training_results/seq2seq_' + params_loss + '_' +
+val_losses = np.loadtxt('training_results/seq2seq_feedback_' + params_loss + '_' +
                         flags_loss + '_' + optimizer_name + '_epochs_' +
                         str(nb_epochs) + '_lr_' + str(learning_rate) +
                         '_val_loss.csv', delimiter=',', skiprows=1)
@@ -54,7 +54,7 @@ plt.title('Parameters loss: ' + params_loss + ', Flags loss: ' + flags_loss +
           ', Optimizer: ' + optimizer_name + ', Epochs: ' + str(nb_epochs) +
           ', Learning rate: ' + str(learning_rate)
           )
-plt.savefig('training_results/seq2seq_' + params_loss + '_' +
+plt.savefig('training_results/seq2seq_feedback_' + params_loss + '_' +
             flags_loss + '_' + optimizer_name + '_epochs_' +
             str(nb_epochs) + '_lr_' + str(learning_rate) + '_graph.png',
             bbox_inches='tight')

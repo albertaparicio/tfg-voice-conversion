@@ -38,7 +38,7 @@ print('done')
 #############################
 # Load model and parameters #
 #############################
-with h5py.File('training_results/seq2seq_training_params.h5', 'r') as f:
+with h5py.File('training_results/seq2seq_feedback_training_params.h5', 'r') as f:
     params_loss = f.attrs.get('params_loss').decode('utf-8')
     flags_loss = f.attrs.get('flags_loss').decode('utf-8')
     optimizer_name = f.attrs.get('optimizer').decode('utf-8')

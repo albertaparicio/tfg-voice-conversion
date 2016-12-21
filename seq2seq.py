@@ -280,17 +280,17 @@ for epoch in range(nb_epochs):
 ###############
 print('Saving model\n' + '=' * 8 * 5)
 model.save_weights(
-    'models/seq2seq_' + params_loss + '_' + flags_loss + '_' + optimizer_name +
+    'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' + optimizer_name +
     '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) + '_weights.h5')
 
-with open('models/seq2seq_' + params_loss + '_' + flags_loss + '_' +
+with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
           optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
           str(learning_rate) + '_model.json', 'w'
           ) as model_json:
     model_json.write(model.to_json())
 
 print('Saving training parameters\n' + '=' * 8 * 5)
-with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
+with h5py.File('training_results/seq2seq_feedback_training_params.h5', 'w') as f:
     f.attrs.create('params_loss', np.string_(params_loss))
     f.attrs.create('flags_loss', np.string_(flags_loss))
     f.attrs.create('optimizer', np.string_(optimizer_name))
@@ -304,15 +304,15 @@ with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
     )
 
 print('Saving training results')
-np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
+np.savetxt('training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
            optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
            str(learning_rate) + '_epochs.csv',
            np.arange(nb_epochs), delimiter=',')
-np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
+np.savetxt('training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
            optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
            str(learning_rate) + '_loss.csv',
            training_history, delimiter=',')
-np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
+np.savetxt('training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
            optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
            str(learning_rate) + '_val_loss.csv',
            validation_history, delimiter=',')
