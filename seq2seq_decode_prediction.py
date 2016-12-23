@@ -38,7 +38,8 @@ print('done')
 #############################
 # Load model and parameters #
 #############################
-with h5py.File('training_results/seq2seq_feedback_training_params.h5', 'r') as f:
+with h5py.File('training_results/seq2seq_feedback_training_params.h5',
+               'r') as f:
     params_loss = f.attrs.get('params_loss').decode('utf-8')
     flags_loss = f.attrs.get('flags_loss').decode('utf-8')
     optimizer_name = f.attrs.get('optimizer').decode('utf-8')
@@ -187,7 +188,7 @@ for src_spk in speakers:
             prediction[:, 43] = np.round(prediction[:, 43])
 
             # Find EOS flag
-            print(np.sum(prediction[:,43]))
+            print(np.sum(prediction[:, 43]))
 
             # eos_flag_index = int(np.nonzero(prediction[:, 43])[0])
 
