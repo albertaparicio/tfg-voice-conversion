@@ -13,7 +13,7 @@ import numpy as np
 import tfglib.seq2seq_datatable as s2s
 import tfglib.seq2seq_normalize as s2s_norm
 from keras.layers import BatchNormalization, GRU, Dropout
-from keras.layers import Input, TimeDistributed, Dense
+from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.core import RepeatVector
 from keras.models import Model
@@ -63,42 +63,50 @@ emb_h = LeakyReLU()(emb_bn)
 
 encoder_GRU = GRU(
     output_dim=256,
+    # input_shape=(max_train_length, data_dim),
     return_sequences=False,
-    consume_less='gpu'
+    consume_less='gpu',
 )(emb_h)
+enc_ReLU = LeakyReLU()(encoder_GRU)
 
-repeat_layer = RepeatVector(max_test_length)(encoder_GRU)
+repeat_layer = RepeatVector(max_test_length)(enc_ReLU)
 
-decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(repeat_layer)
+# Feedback input
+feedback_in = Input(shape=(max_test_length, output_dim), name='feedback_in')
+dec_in = merge([repeat_layer, feedback_in], mode='concat')
 
-dropout_layer = Dropout(0.5)(decoder_GRU)
+decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(dec_in)
+dec_ReLU = LeakyReLU()(decoder_GRU)
+
+dropout_layer = Dropout(0.5)(dec_ReLU)
 
 parameters_GRU = GRU(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
-    activation='linear',
-    name='params_output'
+    activation='linear'
 )(dropout_layer)
+params_ReLU = LeakyReLU(name='params_output')(parameters_GRU)
 
 flags_Dense = TimeDistributed(Dense(
     2,
     activation='sigmoid',
 ), name='flags_output')(dropout_layer)
 
-seq2seq_model = Model(input=main_input, output=[parameters_GRU, flags_Dense])
+model = Model(input=[main_input, feedback_in],
+              output=[params_ReLU, flags_Dense])
 
-seq2seq_model.load_weights(
+model.load_weights(
     'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
     optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) +
     '_weights.h5')
 
 adam = Adam(clipnorm=5)
-seq2seq_model.compile(optimizer=adam,
-                      loss={'params_output': params_loss,
-                            'flags_output': flags_loss},
-                      sample_weight_mode="temporal"
-                      )
+model.compile(optimizer=adam,
+              loss={'params_output': params_loss,
+                    'flags_output': flags_loss},
+              sample_weight_mode="temporal"
+              )
 
 ##################
 # Load basenames #
@@ -159,9 +167,24 @@ for src_spk in speakers:
 
             prediction = np.empty((1, max_test_length, output_dim))
 
+            src_batch = it_sequence.reshape(1, -1, it_sequence.shape[1])
+            # Prepare feedback data
+            feedback_data = np.roll(trg_test_datatable[i, :, :], 1, axis=2)
+            feedback_data[:, 0, :] = 0
+
             [prediction[:, :, 0:42],
-             prediction[:, :, 42:44]] = seq2seq_model.predict(
-                it_sequence.reshape(1, -1, it_sequence.shape[1]))
+             prediction[:, :, 42:44]] = model.predict(
+                {'main_input': src_batch,
+                 'feedback_in': feedback_data}
+            )
+
+            # model.train_on_batch(
+            #     ,
+            #     {'params_output': trg_batch[:, :, 0:42],
+            #      'flags_output': trg_batch[:, :, 42:44]},
+            #     sample_weight={'params_output': batch_masks,
+            #                    'flags_output': batch_masks}
+            # )
 
             # Unscale parameters
             prediction[:, :, 0:42] = s2s_norm.unscale_prediction(
