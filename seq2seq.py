@@ -13,7 +13,7 @@ import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
 from keras.layers import BatchNormalization, GRU, Dropout
-from keras.layers import Input, TimeDistributed, Dense
+from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.core import RepeatVector
 from keras.models import Model
@@ -153,36 +153,42 @@ main_input = Input(shape=(max_train_length, data_dim),
 
 emb_a = TimeDistributed(Dense(emb_size))(main_input)
 emb_bn = BatchNormalization()(emb_a)
-# emb_h = Activation(LeakyReLU(name='LeakyReLu'), name='emb_activation')(emb_bn)
 emb_h = LeakyReLU()(emb_bn)
 
 encoder_GRU = GRU(
     output_dim=256,
     # input_shape=(max_train_length, data_dim),
     return_sequences=False,
-    consume_less='gpu'
+    consume_less='gpu',
 )(emb_h)
+enc_ReLU = LeakyReLU()(encoder_GRU)
 
-repeat_layer = RepeatVector(max_train_length)(encoder_GRU)
+repeat_layer = RepeatVector(max_train_length)(enc_ReLU)
 
-decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(repeat_layer)
+# Feedback input
+feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
+dec_in = merge([repeat_layer, feedback_in], mode='concat')
 
-dropout_layer = Dropout(0.5)(decoder_GRU)
+decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(dec_in)
+dec_ReLU = LeakyReLU()(decoder_GRU)
+
+dropout_layer = Dropout(0.5)(dec_ReLU)
 
 parameters_GRU = GRU(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
-    activation='linear',
-    name='params_output'
+    activation='linear'
 )(dropout_layer)
+params_ReLU = LeakyReLU(name='params_output')(parameters_GRU)
 
 flags_Dense = TimeDistributed(Dense(
     2,
     activation='sigmoid',
 ), name='flags_output')(dropout_layer)
 
-model = Model(input=main_input, output=[parameters_GRU, flags_Dense])
+model = Model(input=[main_input, feedback_in],
+              output=[params_ReLU, flags_Dense])
 
 optimizer_name = 'adam'
 adam = Adam(clipnorm=5)
@@ -225,9 +231,14 @@ for epoch in range(nb_epochs):
         batch_masks = trg_train_masks_f[
                       index * batch_size:(index + 1) * batch_size]
 
+        # Prepare feedback data
+        feedback_data = np.roll(trg_batch, 1, axis=2)
+        feedback_data[:, 0, :] = 0
+
         epoch_train_partial_loss.append(
             model.train_on_batch(
-                {'main_input': src_batch},
+                {'main_input': src_batch,
+                 'feedback_in': feedback_data},
                 {'params_output': trg_batch[:, :, 0:42],
                  'flags_output': trg_batch[:, :, 42:44]},
                 sample_weight={'params_output': batch_masks,
@@ -237,8 +248,13 @@ for epoch in range(nb_epochs):
 
         progress_bar.update(index + 1)
 
+    # Prepare validation feedback data
+    feedback_valid_data = np.roll(trg_valid_data, 1, axis=2)
+    feedback_valid_data[:, 0, :] = 0
+
     epoch_val_loss = model.evaluate(
-        src_valid_data,
+        {'main_input': src_valid_data,
+         'feedback_in': feedback_valid_data},
         {'params_output': trg_valid_data[:, :, 0:42],
          'flags_output': trg_valid_data[:, :, 42:44]},
         batch_size=batch_size,
@@ -264,17 +280,19 @@ for epoch in range(nb_epochs):
 ###############
 print('Saving model\n' + '=' * 8 * 5)
 model.save_weights(
-    'models/seq2seq_' + params_loss + '_' + flags_loss + '_' + optimizer_name +
-    '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) + '_weights.h5')
+    'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
+    optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) +
+    '_weights.h5')
 
-with open('models/seq2seq_' + params_loss + '_' + flags_loss + '_' +
+with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
           optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
           str(learning_rate) + '_model.json', 'w'
           ) as model_json:
     model_json.write(model.to_json())
 
 print('Saving training parameters\n' + '=' * 8 * 5)
-with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
+with h5py.File('training_results/seq2seq_feedback_training_params.h5',
+               'w') as f:
     f.attrs.create('params_loss', np.string_(params_loss))
     f.attrs.create('flags_loss', np.string_(flags_loss))
     f.attrs.create('optimizer', np.string_(optimizer_name))
@@ -288,18 +306,21 @@ with h5py.File('training_results/seq2seq_training_params.h5', 'w') as f:
     )
 
 print('Saving training results')
-np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
-           optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-           str(learning_rate) + '_epochs.csv',
-           np.arange(nb_epochs), delimiter=',')
-np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
-           optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-           str(learning_rate) + '_loss.csv',
-           training_history, delimiter=',')
-np.savetxt('training_results/seq2seq_' + params_loss + '_' + flags_loss + '_' +
-           optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-           str(learning_rate) + '_val_loss.csv',
-           validation_history, delimiter=',')
+np.savetxt(
+    'training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss +
+    '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_epochs.csv',
+    np.arange(nb_epochs), delimiter=',')
+np.savetxt(
+    'training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss +
+    '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_loss.csv',
+    training_history, delimiter=',')
+np.savetxt(
+    'training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss +
+    '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_val_loss.csv',
+    validation_history, delimiter=',')
 
 print('========================' + '\n' +
       '======= FINISHED =======' + '\n' +
