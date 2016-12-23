@@ -150,25 +150,39 @@ for src_spk in speakers:
             ######################
             # Predict parameters #
             ######################
-            it_sequence = src_test_datatable[i, :, :]
+            # ######################################################
+            # ######################################################
+            # ######################################################
+            # ######################################################
+            # ######################################################
+            # it_sequence = src_test_datatable[i, :, :]
+            #
+            # # Test
+            # prediction = np.empty((1, max_test_length, output_dim))
+            #
+            # [prediction[:, :, 0:42],
+            #  prediction[:, :, 42:44]] = seq2seq_model.predict(
+            #     it_sequence.reshape(1, -1, it_sequence.shape[1]))
+            #
+            # # Unscale parameters
+            # prediction[:, :, 0:42] = s2s_norm.unscale_prediction(
+            #     src_test_datatable[i, :, :],
+            #     src_test_masks[i, :],
+            #     prediction[:, :, 0:42].reshape(-1, 42),
+            #     train_speakers_max,
+            #     train_speakers_min
+            # )
+            #
+            # # Reshape prediction into 2D matrix
+            # prediction = prediction.reshape(-1, output_dim)
+            # ######################################################
 
-            prediction = np.empty((1, max_test_length, output_dim))
-
-            [prediction[:, :, 0:42],
-             prediction[:, :, 42:44]] = seq2seq_model.predict(
-                it_sequence.reshape(1, -1, it_sequence.shape[1]))
-
-            # Unscale parameters
-            prediction[:, :, 0:42] = s2s_norm.unscale_prediction(
-                src_test_datatable[i, :, :],
-                src_test_masks[i, :],
-                prediction[:, :, 0:42].reshape(-1, 42),
-                train_speakers_max,
-                train_speakers_min
-            )
-
-            # Reshape prediction into 2D matrix
-            prediction = prediction.reshape(-1, output_dim)
+            prediction = trg_test_datatable[i, :, :]
+            # ######################################################
+            # ######################################################
+            # ######################################################
+            # ######################################################
+            # ######################################################
 
             ###################
             # Round u/v flags #
@@ -190,13 +204,13 @@ for src_spk in speakers:
             # Find EOS flag
             print(np.sum(prediction[:, 43]))
 
-            # eos_flag_index = int(np.nonzero(prediction[:, 43])[0])
+            eos_flag_index = int(np.nonzero(prediction[:, 43])[0])
 
             # Remove all frames after the EOS flag
-            # prediction = prediction[0:eos_flag_index + 1, :]
+            prediction = prediction[0:eos_flag_index + 1, :]
 
             # Check that the last EOS parameter is the flag
-            # assert prediction[-1, 43] == 1
+            assert prediction[-1, 43] == 1
 
             #####################################
             # Save parameters to separate files #
