@@ -88,6 +88,11 @@ flags_Dense = TimeDistributed(Dense(
 
 seq2seq_model = Model(input=main_input, output=[parameters_GRU, flags_Dense])
 
+seq2seq_model.load_weights(
+    'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
+    optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) +
+    '_weights.h5')
+
 adam = Adam(clipnorm=5)
 seq2seq_model.compile(optimizer=adam,
                       loss={'params_output': params_loss,
@@ -151,27 +156,13 @@ for src_spk in speakers:
             # Predict parameters #
             ######################
             it_sequence = src_test_datatable[i, :, :]
-            # ######################################################
-            # ######################################################
-            # ######################################################
-            # ######################################################
-            # ######################################################
-            #
-            # # Test
-            # prediction = np.empty((1, max_test_length, output_dim))
-            #
-            # [prediction[:, :, 0:42],
-            #  prediction[:, :, 42:44]] = seq2seq_model.predict(
-            #     it_sequence.reshape(1, -1, it_sequence.shape[1]))
-            #
-            # ######################################################
-            prediction = it_sequence
 
-            # ######################################################
-            # ######################################################
-            # ######################################################
-            # ######################################################
-            # ######################################################
+            prediction = np.empty((1, max_test_length, output_dim))
+
+            [prediction[:, :, 0:42],
+             prediction[:, :, 42:44]] = seq2seq_model.predict(
+                it_sequence.reshape(1, -1, it_sequence.shape[1]))
+
             # Unscale parameters
             prediction[:, :, 0:42] = s2s_norm.unscale_prediction(
                 src_test_datatable[i, :, :],
