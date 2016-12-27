@@ -15,9 +15,115 @@ import tfglib.seq2seq_normalize as s2s_norm
 from keras.layers import BatchNormalization, GRU, Dropout
 from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.core import RepeatVector
 from keras.models import Model
 from keras.optimizers import Adam
+
+
+# TODO Move the finished function to tfglib
+def load_weights(model, filepath, mode):
+    import h5py
+    from keras import backend as K
+    w_file = h5py.File(filepath, mode='r')
+
+    # Model.load_weights_from_hdf5_group(model, file)
+    if hasattr(model, 'flattened_layers'):
+        # Support for legacy Sequential/Merge behavior.
+        flattened_layers = model.flattened_layers
+    else:
+        flattened_layers = model.layers
+
+    if 'nb_layers' in w_file.attrs:
+        # Legacy format.
+        nb_layers = w_file.attrs['nb_layers']
+        if nb_layers != len(flattened_layers):
+            raise Exception('You are trying to load a weight file '
+                            'containing ' + str(nb_layers) +
+                            ' layers into a model with ' +
+                            str(len(flattened_layers)) + ' layers.')
+
+        for k in range(nb_layers):
+            g = f['layer_{}'.format(k)]
+            weights = [g['param_{}'.format(p)] for p in
+                       range(g.attrs['nb_params'])]
+            flattened_layers[k].set_weights(weights)
+    else:
+        # New file format.
+        filtered_layers = []
+        indexes = []
+        for index, layer in enumerate(flattened_layers):
+            weights = layer.weights
+            if weights:
+                filtered_layers.append(layer)
+                indexes.append(index)
+
+        if mode is 'encoder':
+            offset = 0
+
+        elif mode is 'decoder':
+            offset = 6
+
+        else:
+            raise Exception("Unrecognized mode. Please choose 'encoder' or" +
+                            " 'decoder' as a mode")
+
+        indexes = [index + offset for index in indexes]
+        flattened_layers = filtered_layers
+
+        # layer_names = [n.decode('utf8') for n in w_file.attrs['layer_names']]
+        all_names = [n.decode('utf8') for n in w_file.attrs['layer_names']]
+        layer_names = [all_names[index] for index in indexes]
+        filtered_layer_names = []
+        for name in layer_names:
+            g = w_file[name]
+            weight_names = [n.decode('utf8') for n in g.attrs['weight_names']]
+            if len(weight_names):
+                filtered_layer_names.append(name)
+        layer_names = filtered_layer_names
+
+        # TODO Split encoder layers from decoder layers
+
+        if len(layer_names) != len(flattened_layers):
+            raise Exception('You are trying to load a weight file '
+                            'containing ' + str(len(layer_names)) +
+                            ' layers into a model with ' +
+                            str(len(flattened_layers)) + ' layers.')
+
+        # We batch weight value assignments in a single backend call
+        # which provides a speedup in TensorFlow.
+        weight_value_tuples = []
+        for k, name in enumerate(layer_names):
+            g = w_file[name]
+            weight_names = [n.decode('utf8') for n in g.attrs['weight_names']]
+            weight_values = [g[weight_name] for weight_name in weight_names]
+            layer = flattened_layers[k]
+            symbolic_weights = layer.weights
+            if len(weight_values) != len(symbolic_weights):
+                raise Exception('Layer #' + str(k) +
+                                ' (named "' + layer.name +
+                                '" in the current model) was found to '
+                                'correspond to layer ' + name +
+                                ' in the save file. '
+                                'However the new layer ' + layer.name +
+                                ' expects ' + str(len(symbolic_weights)) +
+                                ' weights, but the saved weights have ' +
+                                str(len(weight_values)) +
+                                ' elements.')
+            if layer.__class__.__name__ == 'Convolution1D':
+                # This is for backwards compatibility with
+                # the old Conv1D weights format.
+                w = weight_values[0]
+                shape = w.shape
+                if shape[:2] != (layer.filter_length, 1) or \
+                                shape[3] != layer.nb_filter:
+                    # Legacy shape:
+                    # (self.nb_filter, input_dim, self.filter_length, 1)
+                    assert shape[0] == layer.nb_filter and shape[2:] == (
+                        layer.filter_length, 1)
+                    w = np.transpose(w, (2, 3, 1, 0))
+                    weight_values[0] = w
+            weight_value_tuples += zip(symbolic_weights, weight_values)
+        K.batch_set_value(weight_value_tuples)
+
 
 ######################
 # Load test database #
@@ -52,30 +158,41 @@ print('Re-initializing model')
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
+batch_size = 1
 
-main_input = Input(shape=(max_test_length, data_dim),
-                   dtype='float32',
-                   name='main_input')
+#################
+# Define models #
+#################
+# Encoder model
+encoder_input = Input(batch_shape=(batch_size, max_test_length, data_dim),
+                      # shape=(max_test_length, data_dim),
+                      dtype='float32',
+                      name='encoder_input')
 
-emb_a = TimeDistributed(Dense(emb_size))(main_input)
-emb_bn = BatchNormalization()(emb_a)
+emb_a = TimeDistributed(Dense(emb_size), name='encoder_td_dense')(encoder_input)
+emb_bn = BatchNormalization(name='enc_batch_norm')(emb_a)
 emb_h = LeakyReLU()(emb_bn)
 
 encoder_GRU = GRU(
     output_dim=256,
-    # input_shape=(max_train_length, data_dim),
+    # input_shape=(batch_size, max_test_length, data_dim),
+    # batch_input_shape=(batch_size, max_test_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
+    stateful=True,
+    name='encoder_GRU'
 )(emb_h)
-enc_ReLU = LeakyReLU()(encoder_GRU)
+encoder_output = LeakyReLU(name='encoder_output')(encoder_GRU)
 
-repeat_layer = RepeatVector(max_test_length)(enc_ReLU)
+# Decoder model
+decoder_input = Input(batch_shape=(batch_size, 1, emb_size), dtype='float32',
+                      name='decoder_input')
+feedback_input = Input(batch_shape=(batch_size, 1, output_dim),
+                       name='feedback_in')
+dec_in = merge([decoder_input, feedback_input], mode='concat')
 
-# Feedback input
-feedback_in = Input(shape=(max_test_length, output_dim), name='feedback_in')
-dec_in = merge([repeat_layer, feedback_in], mode='concat')
-
-decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(dec_in)
+decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu',
+                  stateful=True, name='decoder_GRU')(dec_in)
 dec_ReLU = LeakyReLU()(decoder_GRU)
 
 dropout_layer = Dropout(0.5)(dec_ReLU)
@@ -84,29 +201,48 @@ parameters_GRU = GRU(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
-    activation='linear'
+    activation='linear',
+    stateful=True,
+    name='parameters_GRU'
 )(dropout_layer)
-params_ReLU = LeakyReLU(name='params_output')(parameters_GRU)
+params_output = LeakyReLU(name='params_output')(parameters_GRU)
 
-flags_Dense = TimeDistributed(Dense(
+flags_output = TimeDistributed(Dense(
     2,
     activation='sigmoid',
 ), name='flags_output')(dropout_layer)
 
-model = Model(input=[main_input, feedback_in],
-              output=[params_ReLU, flags_Dense])
+######################
+# Instantiate models #
+######################
+encoder_model = Model(input=encoder_input,
+                      output=encoder_output)
+decoder_model = Model(input=[decoder_input, feedback_input],
+                      output=[params_output, flags_output])
 
-model.load_weights(
-    'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
-    optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) +
-    '_weights.h5')
+# Load weights and compile models
+load_weights(encoder_model, 'models/seq2seq_feedback_' + params_loss +
+             '_' + flags_loss + '_' + optimizer_name + '_epochs_' +
+             str(nb_epochs) + '_lr_' + str(learning_rate) +
+             '_weights.h5', 'encoder')
+
+load_weights(decoder_model, 'models/seq2seq_feedback_' + params_loss +
+             '_' + flags_loss + '_' + optimizer_name + '_epochs_' +
+             str(nb_epochs) + '_lr_' + str(learning_rate) +
+             '_weights.h5', 'decoder')
 
 adam = Adam(clipnorm=5)
-model.compile(optimizer=adam,
-              loss={'params_output': params_loss,
-                    'flags_output': flags_loss},
-              sample_weight_mode="temporal"
-              )
+
+encoder_model.compile(optimizer=adam,
+                      loss={'encoder_output': params_loss},
+                      sample_weight_mode="temporal"
+                      )
+
+decoder_model.compile(optimizer=adam,
+                      loss={'params_output': params_loss,
+                            'flags_output': flags_loss},
+                      sample_weight_mode="temporal"
+                      )
 
 ##################
 # Load basenames #
@@ -143,88 +279,87 @@ for src_spk in speakers:
                 train_speakers_min
             )[0]
 
-            # #################
-            # # Mask sequence #
-            # #################
-            # masked_sequence = s2s_norm.mask_data(
-            #     src_test_datatable[i, :, :],
-            #     src_test_masks[i, :]
-            # )
-            #
-            # #######################
-            # # Get only valid data #
-            # #######################
-            # valid_sequence = masked_sequence[~masked_sequence.mask].reshape(
-            #     (1,
-            #      -1,
-            #      masked_sequence.shape[1])
-            # )
-
             ######################
             # Predict parameters #
             ######################
+            # Initialize encoder prediction data
+            # ==================================
             it_sequence = src_test_datatable[i, :, :]
+            src_batch = it_sequence.reshape(batch_size, -1,
+                                            it_sequence.shape[1])
 
-            prediction = np.empty((1, max_test_length, output_dim))
+            # Encoder prediction
+            # ==================
+            encoder_prediction = encoder_model.predict_on_batch(src_batch)
 
-            src_batch = it_sequence.reshape(1, -1, it_sequence.shape[1])
-            # Prepare feedback data
-            feedback_data = np.roll(trg_test_datatable[i, :, :], 1, axis=2)
-            feedback_data[:, 0, :] = 0
+            # Prepare data for decoder predictions
+            # ====================================
+            decoder_prediction = np.empty((batch_size, 0, output_dim))
+            partial_prediction = np.empty((batch_size, 1, output_dim))
 
-            [prediction[:, :, 0:42],
-             prediction[:, :, 42:44]] = model.predict(
-                {'main_input': src_batch,
-                 'feedback_in': feedback_data}
-            )
+            # Feedback data for first decoder iteration
+            feedback_data = np.zeros((batch_size, 1, output_dim))
 
-            # model.train_on_batch(
-            #     ,
-            #     {'params_output': trg_batch[:, :, 0:42],
-            #      'flags_output': trg_batch[:, :, 42:44]},
-            #     sample_weight={'params_output': batch_masks,
-            #                    'flags_output': batch_masks}
-            # )
+            # Loop parameters
+            loop_timesteps = 0
+            EOS = 0
 
-            # Unscale parameters
-            prediction[:, :, 0:42] = s2s_norm.unscale_prediction(
-                src_test_datatable[i, :, :],
-                src_test_masks[i, :],
-                prediction[:, :, 0:42].reshape(-1, 42),
-                train_speakers_max,
-                train_speakers_min
-            )
+            # Decoder predictions
+            while EOS < 0.5:  # loop_timesteps < max_test_length:
+                if loop_timesteps > 472:
+                    print(loop_timesteps)
+
+                [partial_prediction[:, :, 0:42],
+                 partial_prediction[:, :, 42:44]
+                 ] = decoder_model.predict_on_batch(
+                    {'decoder_input': encoder_prediction.reshape(1, -1,
+                                                                 emb_size),
+                     'feedback_in': feedback_data}
+                )
+
+                decoder_prediction = np.concatenate(
+                    (decoder_prediction, partial_prediction),
+                    axis=1
+                )
+
+                # Unscale parameters
+                decoder_prediction[
+                    :, loop_timesteps, 0:42
+                ] = s2s_norm.unscale_prediction(
+                    src_test_datatable[i, :, :],
+                    src_test_masks[i, :],
+                    decoder_prediction[:, loop_timesteps, 0:42].reshape(-1, 42),
+                    train_speakers_max,
+                    train_speakers_min
+                )
+
+                ###################
+                # Round u/v flags #
+                ###################
+                decoder_prediction[:, loop_timesteps, 42] = np.round(
+                    decoder_prediction[:, loop_timesteps, 42])
+
+                # Apply u/v flags to lf0 and mvf
+                # for index, entry in enumerate(prediction[:, 42]):
+                #     if entry == 0:
+                if decoder_prediction[:, loop_timesteps, 42] == 0:
+                    decoder_prediction[:, loop_timesteps, 40] = -1e+10  # lf0
+                    decoder_prediction[:, loop_timesteps, 41] = 0  # mvf
+
+                #############################################
+                # Concatenate prediction with feedback data #
+                #############################################
+                feedback_data = decoder_prediction[:, loop_timesteps,
+                                :].reshape(1, -1, output_dim)
+
+                EOS = decoder_prediction[:, loop_timesteps, 43]
+                loop_timesteps += 1
+
+            # There is no need to un-zero-pad, since the while loop stops
+            # when an EOS flag is found
 
             # Reshape prediction into 2D matrix
-            prediction = prediction.reshape(-1, output_dim)
-
-            ###################
-            # Round u/v flags #
-            ###################
-            prediction[:, 42] = np.round(prediction[:, 42])
-
-            # Apply u/v flags to lf0 and mvf
-            for index, entry in enumerate(prediction[:, 42]):
-                if entry == 0:
-                    prediction[index, 40] = -1e+10  # lf0
-                    prediction[index, 41] = 0  # mvf
-
-            ##################################################
-            # Un-zero-pad according to End-Of-Sequence flags #
-            ##################################################
-            # Round EOS flags
-            prediction[:, 43] = np.round(prediction[:, 43])
-
-            # Find EOS flag
-            print(np.sum(prediction[:, 43]))
-
-            eos_flag_index = int(np.nonzero(prediction[:, 43])[0])
-
-            # Remove all frames after the EOS flag
-            prediction = prediction[0:eos_flag_index + 1, :]
-
-            # Check that the last EOS parameter is the flag
-            assert prediction[-1, 43] == 1
+            decoder_prediction = decoder_prediction.reshape(-1, output_dim)
 
             #####################################
             # Save parameters to separate files #
@@ -241,16 +376,16 @@ for src_spk in speakers:
             np.savetxt(
                 'data/test/s2s_predicted/' + src_spk + '-' + trg_spk + '/' +
                 basenames[i] + '.vf.dat',
-                prediction[:, 41]
+                decoder_prediction[:, 41]
             )
             np.savetxt(
                 'data/test/s2s_predicted/' + src_spk + '-' + trg_spk + '/' +
                 basenames[i] + '.lf0.dat',
-                prediction[:, 40]
+                decoder_prediction[:, 40]
             )
             np.savetxt(
                 'data/test/s2s_predicted/' + src_spk + '-' + trg_spk + '/' +
                 basenames[i] + '.mcp.dat',
-                prediction[:, 0:40],
+                decoder_prediction[:, 0:40],
                 delimiter='\t'
             )
