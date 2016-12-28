@@ -142,6 +142,7 @@ print('done')
 #############################
 # Load model and parameters #
 #############################
+print('Loading parameters')
 with h5py.File('training_results/seq2seq_feedback_training_params.h5',
                'r') as f:
     params_loss = f.attrs.get('params_loss').decode('utf-8')
@@ -259,12 +260,14 @@ speakers = [line.split('\n')[0] for line in speakers_lines]
 #######################
 # Loop over sequences #
 #######################
+print('Predicting sequences')
 assert len(basenames) == src_test_datatable.shape[0] / np.square(len(speakers))
 
 for src_spk in speakers:
     for trg_spk in speakers:
         # for i in range(src_test_datatable.shape[0]):
         for i in range(len(basenames)):
+            print(src_spk + '->' + trg_spk + ' ' + basenames[i])
             ##################
             # Normalize data #
             ##################
@@ -304,8 +307,8 @@ for src_spk in speakers:
             max_loop = 1.5 * max_test_length
 
             # Decoder predictions
-            while EOS < 0.5 or loop_timesteps < max_loop:
-                print(loop_timesteps)
+            while EOS < 0.5 and loop_timesteps < max_loop:
+                # print(loop_timesteps)
 
                 [partial_prediction[:, :, 0:42],
                  partial_prediction[:, :, 42:44]
