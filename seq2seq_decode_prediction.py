@@ -80,8 +80,6 @@ def load_weights(model, filepath, mode):
                 filtered_layer_names.append(name)
         layer_names = filtered_layer_names
 
-        # TODO Split encoder layers from decoder layers
-
         if len(layer_names) != len(flattened_layers):
             raise Exception('You are trying to load a weight file '
                             'containing ' + str(len(layer_names)) +
@@ -114,7 +112,7 @@ def load_weights(model, filepath, mode):
                 w = weight_values[0]
                 shape = w.shape
                 if shape[:2] != (layer.filter_length, 1) or \
-                                shape[3] != layer.nb_filter:
+                        shape[3] != layer.nb_filter:
                     # Legacy shape:
                     # (self.nb_filter, input_dim, self.filter_length, 1)
                     assert shape[0] == layer.nb_filter and shape[2:] == (
@@ -303,11 +301,11 @@ for src_spk in speakers:
             # Loop parameters
             loop_timesteps = 0
             EOS = 0
+            max_loop = 1.5 * max_test_length
 
             # Decoder predictions
-            while EOS < 0.5:  # loop_timesteps < max_test_length:
-                if loop_timesteps > 472:
-                    print(loop_timesteps)
+            while EOS < 0.5 or loop_timesteps < max_loop:
+                print(loop_timesteps)
 
                 [partial_prediction[:, :, 0:42],
                  partial_prediction[:, :, 42:44]
@@ -350,7 +348,7 @@ for src_spk in speakers:
                 # Concatenate prediction with feedback data #
                 #############################################
                 feedback_data = decoder_prediction[:, loop_timesteps,
-                                :].reshape(1, -1, output_dim)
+                                                   :].reshape(1, -1, output_dim)
 
                 EOS = decoder_prediction[:, loop_timesteps, 43]
                 loop_timesteps += 1
