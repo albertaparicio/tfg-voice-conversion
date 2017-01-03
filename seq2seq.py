@@ -12,13 +12,14 @@ from time import time
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
-from keras.layers import BatchNormalization, GRU, Dropout
+from keras.layers import BatchNormalization, Dropout
 from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.core import RepeatVector
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.utils.generic_utils import Progbar
+from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.seq2seq_normalize import maxmin_scaling
 from tfglib.utils import display_time
 
@@ -115,18 +116,18 @@ for i in range(src_train_datatable.shape[0]):
 ################################################
 # Split data into training and validation sets #
 ################################################
-# ###################################
-# # TODO ELIMINATE AFTER DEVELOPING #
-# ###################################
-# batch_size = 2
-# nb_epochs = 2
-#
-# num = 10
-# src_train_datatable = src_train_datatable[0:num]
-# src_train_masks = src_train_masks[0:num]
-# trg_train_datatable = trg_train_datatable[0:num]
-# trg_train_masks = trg_train_masks[0:num]
-# #################################################
+###################################
+# TODO ELIMINATE AFTER DEVELOPING #
+###################################
+batch_size = 2
+nb_epochs = 2
+
+num = 10
+src_train_datatable = src_train_datatable[0:num]
+src_train_masks = src_train_masks[0:num]
+trg_train_datatable = trg_train_datatable[0:num]
+trg_train_masks = trg_train_masks[0:num]
+#################################################
 
 src_train_data = src_train_datatable[0:int(np.floor(
     src_train_datatable.shape[0] * (1 - validation_fraction)))]
@@ -155,13 +156,13 @@ emb_a = TimeDistributed(Dense(emb_size))(main_input)
 emb_bn = BatchNormalization()(emb_a)
 emb_h = LeakyReLU()(emb_bn)
 
-encoder_GRU = GRU(
+encoder_PLSTM = PLSTM(
     output_dim=256,
     # input_shape=(max_train_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
 )(emb_h)
-enc_ReLU = LeakyReLU()(encoder_GRU)
+enc_ReLU = LeakyReLU()(encoder_PLSTM)
 
 repeat_layer = RepeatVector(max_train_length)(enc_ReLU)
 
@@ -169,18 +170,18 @@ repeat_layer = RepeatVector(max_train_length)(enc_ReLU)
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
 dec_in = merge([repeat_layer, feedback_in], mode='concat')
 
-decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(dec_in)
-dec_ReLU = LeakyReLU()(decoder_GRU)
+decoder_PLSTM = PLSTM(256, return_sequences=True, consume_less='gpu')(dec_in)
+dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
 dropout_layer = Dropout(0.5)(dec_ReLU)
 
-parameters_GRU = GRU(
+parameters_PLSTM = PLSTM(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
     activation='linear'
 )(dropout_layer)
-params_ReLU = LeakyReLU(name='params_output')(parameters_GRU)
+params_ReLU = LeakyReLU(name='params_output')(parameters_PLSTM)
 
 flags_Dense = TimeDistributed(Dense(
     2,
