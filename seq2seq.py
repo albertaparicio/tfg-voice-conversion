@@ -30,7 +30,7 @@ start_time = time()
 # Sizes and constants #
 #######################
 # Batch shape
-batch_size = 100
+batch_size = 50
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
@@ -116,18 +116,18 @@ for i in range(src_train_datatable.shape[0]):
 ################################################
 # Split data into training and validation sets #
 ################################################
-###################################
-# TODO ELIMINATE AFTER DEVELOPING #
-###################################
-batch_size = 2
-nb_epochs = 2
+# ###################################
+# # TODO ELIMINATE AFTER DEVELOPING #
+# ###################################
+# batch_size = 2
+# nb_epochs = 2
 
-num = 10
-src_train_datatable = src_train_datatable[0:num]
-src_train_masks = src_train_masks[0:num]
-trg_train_datatable = trg_train_datatable[0:num]
-trg_train_masks = trg_train_masks[0:num]
-#################################################
+# num = 10
+# src_train_datatable = src_train_datatable[0:num]
+# src_train_masks = src_train_masks[0:num]
+# trg_train_datatable = trg_train_datatable[0:num]
+# trg_train_masks = trg_train_masks[0:num]
+# #################################################
 
 src_train_data = src_train_datatable[0:int(np.floor(
     src_train_datatable.shape[0] * (1 - validation_fraction)))]
@@ -276,20 +276,20 @@ for epoch in range(nb_epochs):
           )
     print()
 
-###############
-# Saving data #
-###############
-print('Saving model\n' + '=' * 8 * 5)
-model.save_weights(
-    'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
-    optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) +
-    '_weights.h5')
+    ###########################
+    # Saving after each epoch #
+    ###########################
+    print('Saving model\n' + '=' * 8 * 5)
+    model.save_weights(
+        'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
+        optimizer_name + '_epoch_' + str(epoch) + '_lr_' + str(learning_rate) +
+        '_weights.h5')
 
-with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
-          optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-          str(learning_rate) + '_model.json', 'w'
-          ) as model_json:
-    model_json.write(model.to_json())
+    with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss +
+              '_' + optimizer_name + '_epoch_' + str(epoch) + '_lr_' +
+              str(learning_rate) + '_model.json', 'w'
+             ) as model_json:
+        model_json.write(model.to_json())
 
 print('Saving training parameters\n' + '=' * 8 * 5)
 with h5py.File('training_results/seq2seq_feedback_training_params.h5',
