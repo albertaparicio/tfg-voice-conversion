@@ -12,13 +12,14 @@ from time import time
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
-from keras.layers import BatchNormalization, GRU, Dropout
+from keras.layers import BatchNormalization, Dropout
 from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.core import RepeatVector
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.utils.generic_utils import Progbar
+from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.seq2seq_normalize import maxmin_scaling
 from tfglib.utils import display_time
 
@@ -29,7 +30,7 @@ start_time = time()
 # Sizes and constants #
 #######################
 # Batch shape
-batch_size = 100
+batch_size = 50
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
@@ -120,7 +121,7 @@ for i in range(src_train_datatable.shape[0]):
 # ###################################
 # batch_size = 2
 # nb_epochs = 2
-#
+
 # num = 10
 # src_train_datatable = src_train_datatable[0:num]
 # src_train_masks = src_train_masks[0:num]
@@ -155,13 +156,13 @@ emb_a = TimeDistributed(Dense(emb_size))(main_input)
 emb_bn = BatchNormalization()(emb_a)
 emb_h = LeakyReLU()(emb_bn)
 
-encoder_GRU = GRU(
+encoder_PLSTM = PLSTM(
     output_dim=256,
     # input_shape=(max_train_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
 )(emb_h)
-enc_ReLU = LeakyReLU()(encoder_GRU)
+enc_ReLU = LeakyReLU()(encoder_PLSTM)
 
 repeat_layer = RepeatVector(max_train_length)(enc_ReLU)
 
@@ -169,18 +170,18 @@ repeat_layer = RepeatVector(max_train_length)(enc_ReLU)
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
 dec_in = merge([repeat_layer, feedback_in], mode='concat')
 
-decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu')(dec_in)
-dec_ReLU = LeakyReLU()(decoder_GRU)
+decoder_PLSTM = PLSTM(256, return_sequences=True, consume_less='gpu')(dec_in)
+dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
 dropout_layer = Dropout(0.5)(dec_ReLU)
 
-parameters_GRU = GRU(
+parameters_PLSTM = PLSTM(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
     activation='linear'
 )(dropout_layer)
-params_ReLU = LeakyReLU(name='params_output')(parameters_GRU)
+params_ReLU = LeakyReLU(name='params_output')(parameters_PLSTM)
 
 flags_Dense = TimeDistributed(Dense(
     2,
@@ -275,20 +276,20 @@ for epoch in range(nb_epochs):
           )
     print()
 
-###############
-# Saving data #
-###############
-print('Saving model\n' + '=' * 8 * 5)
-model.save_weights(
-    'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
-    optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' + str(learning_rate) +
-    '_weights.h5')
+    ###########################
+    # Saving after each epoch #
+    ###########################
+    print('Saving model\n' + '=' * 8 * 5)
+    model.save_weights(
+        'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
+        optimizer_name + '_epoch_' + str(epoch) + '_lr_' + str(learning_rate) +
+        '_weights.h5')
 
-with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
-          optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-          str(learning_rate) + '_model.json', 'w'
-          ) as model_json:
-    model_json.write(model.to_json())
+    with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss +
+              '_' + optimizer_name + '_epoch_' + str(epoch) + '_lr_' +
+              str(learning_rate) + '_model.json', 'w'
+             ) as model_json:
+        model_json.write(model.to_json())
 
 print('Saving training parameters\n' + '=' * 8 * 5)
 with h5py.File('training_results/seq2seq_feedback_training_params.h5',
