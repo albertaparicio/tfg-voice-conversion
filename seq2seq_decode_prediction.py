@@ -12,12 +12,13 @@ import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
 import tfglib.seq2seq_normalize as s2s_norm
-from keras.layers import BatchNormalization, GRU, Dropout
+from keras.layers import BatchNormalization, Dropout
 from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.optimizers import Adam
 from tfglib.utils import s2s_load_weights as load_weights
+from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 
 ######################
 # Load test database #
@@ -68,16 +69,16 @@ emb_a = TimeDistributed(Dense(emb_size), name='encoder_td_dense')(encoder_input)
 emb_bn = BatchNormalization(name='enc_batch_norm')(emb_a)
 emb_h = LeakyReLU()(emb_bn)
 
-encoder_GRU = GRU(
+encoder_PLSTM = PLSTM(
     output_dim=256,
     # input_shape=(batch_size, max_test_length, data_dim),
     # batch_input_shape=(batch_size, max_test_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
     stateful=True,
-    name='encoder_GRU'
+    name='encoder_PLSTM'
 )(emb_h)
-encoder_output = LeakyReLU(name='encoder_output')(encoder_GRU)
+encoder_output = LeakyReLU(name='encoder_output')(encoder_PLSTM)
 
 # Decoder model
 decoder_input = Input(batch_shape=(batch_size, 1, emb_size), dtype='float32',
@@ -86,21 +87,21 @@ feedback_input = Input(batch_shape=(batch_size, 1, output_dim),
                        name='feedback_in')
 dec_in = merge([decoder_input, feedback_input], mode='concat')
 
-decoder_GRU = GRU(256, return_sequences=True, consume_less='gpu',
-                  stateful=True, name='decoder_GRU')(dec_in)
-dec_ReLU = LeakyReLU()(decoder_GRU)
+decoder_PLSTM = PLSTM(256, return_sequences=True, consume_less='gpu',
+                      stateful=True, name='decoder_PLSTM')(dec_in)
+dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
 dropout_layer = Dropout(0.5)(dec_ReLU)
 
-parameters_GRU = GRU(
+parameters_PLSTM = PLSTM(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
     activation='linear',
     stateful=True,
-    name='parameters_GRU'
+    name='parameters_PLSTM'
 )(dropout_layer)
-params_output = LeakyReLU(name='params_output')(parameters_GRU)
+params_output = LeakyReLU(name='params_output')(parameters_PLSTM)
 
 flags_output = TimeDistributed(Dense(
     2,
@@ -117,13 +118,13 @@ decoder_model = Model(input=[decoder_input, feedback_input],
 
 # Load weights and compile models
 load_weights(encoder_model, 'models/seq2seq_feedback_' + params_loss +
-             '_' + flags_loss + '_' + optimizer_name + '_epochs_' +
-             str(nb_epochs) + '_lr_' + str(learning_rate) +
+             '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+             str(nb_epochs - 1) + '_lr_' + str(learning_rate) +
              '_weights.h5', 'encoder')
 
 load_weights(decoder_model, 'models/seq2seq_feedback_' + params_loss +
-             '_' + flags_loss + '_' + optimizer_name + '_epochs_' +
-             str(nb_epochs) + '_lr_' + str(learning_rate) +
+             '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+             str(nb_epochs - 1) + '_lr_' + str(learning_rate) +
              '_weights.h5', 'decoder')
 
 adam = Adam(clipnorm=5)
@@ -193,6 +194,7 @@ for src_spk in speakers:
             # ====================================
             decoder_prediction = np.empty((batch_size, 0, output_dim))
             partial_prediction = np.empty((batch_size, 1, output_dim))
+            raw_uv_flags = np.empty((batch_size, 0, 1))
 
             # Feedback data for first decoder iteration
             feedback_data = np.zeros((batch_size, 1, output_dim))
@@ -233,6 +235,8 @@ for src_spk in speakers:
                 ###################
                 # Round u/v flags #
                 ###################
+                raw_uv_flags[:, loop_timesteps, 0] = decoder_prediction[:, loop_timesteps, 42]
+
                 decoder_prediction[:, loop_timesteps, 42] = np.round(
                     decoder_prediction[:, loop_timesteps, 42])
 
@@ -241,7 +245,7 @@ for src_spk in speakers:
                 #     if entry == 0:
                 if decoder_prediction[:, loop_timesteps, 42] == 0:
                     decoder_prediction[:, loop_timesteps, 40] = -1e+10  # lf0
-                    decoder_prediction[:, loop_timesteps, 41] = 0  # mvf
+                    decoder_prediction[:, loop_timesteps, 41] = 1000  # mvf
 
                 #############################################
                 # Concatenate prediction with feedback data #
@@ -257,6 +261,7 @@ for src_spk in speakers:
 
             # Reshape prediction into 2D matrix
             decoder_prediction = decoder_prediction.reshape(-1, output_dim)
+            raw_uv_flags = raw_uv_flags.reshape(-1, 1)
 
             #####################################
             # Save parameters to separate files #
@@ -285,4 +290,9 @@ for src_spk in speakers:
                 basenames[i] + '.mcp.dat',
                 decoder_prediction[:, 0:40],
                 delimiter='\t'
+            )
+            np.savetxt(
+                'data/test/s2s_predicted/' + src_spk + '-' + trg_spk + '/' +
+                basenames[i] + '.uv.dat',
+                raw_uv_flags
             )
