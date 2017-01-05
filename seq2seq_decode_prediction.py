@@ -235,8 +235,9 @@ for src_spk in speakers:
                 ###################
                 # Round u/v flags #
                 ###################
-                raw_uv_flags = np.concatenate(
-                    (raw_uv_flags, decoder_prediction[:, loop_timesteps, 42])
+                raw_uv_flags = np.append(
+                    raw_uv_flags, [[decoder_prediction[:, loop_timesteps, 42]]],
+                    axis=0
                 )
 
                 decoder_prediction[:, loop_timesteps, 42] = np.round(
