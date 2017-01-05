@@ -194,7 +194,7 @@ for src_spk in speakers:
             # ====================================
             decoder_prediction = np.empty((batch_size, 0, output_dim))
             partial_prediction = np.empty((batch_size, 1, output_dim))
-            raw_uv_flags = np.empty((batch_size, 0, 1))
+            raw_uv_flags = np.empty((0, 1))
 
             # Feedback data for first decoder iteration
             feedback_data = np.zeros((batch_size, 1, output_dim))
@@ -236,7 +236,7 @@ for src_spk in speakers:
                 # Round u/v flags #
                 ###################
                 raw_uv_flags = np.append(
-                    raw_uv_flags, [[decoder_prediction[:, loop_timesteps, 42]]],
+                    raw_uv_flags, [decoder_prediction[:, loop_timesteps, 42]],
                     axis=0
                 )
 
