@@ -12,6 +12,7 @@ import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
 import tfglib.seq2seq_normalize as s2s_norm
+from ahoproc_tools import error_metrics
 from keras.layers import BatchNormalization, Dropout
 from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
@@ -160,6 +161,9 @@ speakers = [line.split('\n')[0] for line in speakers_lines]
 print('Predicting sequences')
 assert len(basenames) == src_test_datatable.shape[0] / np.square(len(speakers))
 
+src_spk_ind = 0
+trg_spk_ind = 0
+
 for src_spk in speakers:
     for trg_spk in speakers:
         # for i in range(src_test_datatable.shape[0]):
@@ -300,3 +304,21 @@ for src_spk in speakers:
                 basenames[i] + '.uv.dat',
                 raw_uv_flags
             )
+
+            # Display MCD
+            print('MCD = ' +
+                  error_metrics.MCD(
+                      trg_test_datatable[
+                        i + (src_spk_ind + trg_spk_ind) * len(basenames),
+                        0:sum(trg_test_masks[i, :]),
+                        0:40
+                      ],
+                      decoder_prediction[
+                        0:sum(trg_test_masks[i, :]),
+                        0:40
+                      ]
+                  )
+                  )
+
+        trg_spk_ind += 1
+    src_spk_ind += 1
