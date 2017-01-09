@@ -310,11 +310,11 @@ for src_spk in speakers:
                   error_metrics.MCD(
                       trg_test_datatable[
                         i + (src_spk_ind + trg_spk_ind) * len(basenames),
-                        0:sum(trg_test_masks[i, :]),
+                        0:int(sum(trg_test_masks[i, :])),
                         0:40
                       ],
                       decoder_prediction[
-                        0:sum(trg_test_masks[i, :]),
+                        0:int(sum(trg_test_masks[i, :])),
                         0:40
                       ]
                   )
