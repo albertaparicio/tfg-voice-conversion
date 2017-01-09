@@ -307,17 +307,17 @@ for src_spk in speakers:
 
             # Display MCD
             print('MCD = ' +
-                  error_metrics.MCD(
+                  str(error_metrics.MCD(
                       trg_test_datatable[
                         i + (src_spk_ind + trg_spk_ind) * len(basenames),
-                        0:int(sum(trg_test_masks[i, :])),
+                        0:int(sum(trg_test_masks[i + (src_spk_ind + trg_spk_ind) * len(basenames), :])),
                         0:40
                       ],
                       decoder_prediction[
-                        0:int(sum(trg_test_masks[i, :])),
+                        0:int(sum(trg_test_masks[i + (src_spk_ind + trg_spk_ind) * len(basenames), :])),
                         0:40
                       ]
-                  )
+                  ))
                   )
 
         trg_spk_ind += 1
