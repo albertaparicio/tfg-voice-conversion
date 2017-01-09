@@ -17,8 +17,8 @@ from keras.layers import Input, TimeDistributed, Dense, merge
 from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.optimizers import Adam
-from tfglib.utils import s2s_load_weights as load_weights
 from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
+from tfglib.utils import s2s_load_weights as load_weights
 
 ######################
 # Load test database #
@@ -205,7 +205,8 @@ for src_spk in speakers:
             max_loop = 1.5 * max_test_length
 
             # Decoder predictions
-            while EOS < 0.5 and loop_timesteps < max_loop:
+            while loop_timesteps < max_test_length:
+                # while EOS < 0.5 and loop_timesteps < max_loop:
                 # print(loop_timesteps)
 
                 [partial_prediction[:, :, 0:42],
