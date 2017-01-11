@@ -157,31 +157,32 @@ emb_bn = BatchNormalization()(emb_a)
 emb_h = LeakyReLU()(emb_bn)
 
 encoder_PLSTM = PLSTM(
-    output_dim=256,
+    output_dim=1024,
     # input_shape=(max_train_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
 )(emb_h)
-enc_ReLU = LeakyReLU()(encoder_PLSTM)
+# enc_ReLU = LeakyReLU()(encoder_PLSTM)
 
-repeat_layer = RepeatVector(max_train_length)(enc_ReLU)
+repeat_layer = RepeatVector(max_train_length)(encoder_PLSTM)
 
 # Feedback input
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
 dec_in = merge([repeat_layer, feedback_in], mode='concat')
 
 decoder_PLSTM = PLSTM(256, return_sequences=True, consume_less='gpu')(dec_in)
-dec_ReLU = LeakyReLU()(decoder_PLSTM)
+# dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
-dropout_layer = Dropout(0.5)(dec_ReLU)
+dropout_layer = Dropout(0.5)(decoder_PLSTM)
 
 parameters_PLSTM = PLSTM(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
-    activation='linear'
+    activation='linear',
+    name='params_output'
 )(dropout_layer)
-params_ReLU = LeakyReLU(name='params_output')(parameters_PLSTM)
+# params_ReLU = LeakyReLU(name='params_output')(parameters_PLSTM)
 
 flags_Dense = TimeDistributed(Dense(
     2,
@@ -189,7 +190,7 @@ flags_Dense = TimeDistributed(Dense(
 ), name='flags_output')(dropout_layer)
 
 model = Model(input=[main_input, feedback_in],
-              output=[params_ReLU, flags_Dense])
+              output=[parameters_PLSTM, flags_Dense])
 
 optimizer_name = 'adam'
 adam = Adam(clipnorm=5)
