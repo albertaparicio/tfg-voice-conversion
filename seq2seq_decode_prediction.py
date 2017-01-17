@@ -54,8 +54,10 @@ with h5py.File('training_results/seq2seq_feedback_training_params.h5',
 print('Re-initializing model')
 output_dim = 44
 data_dim = output_dim + 10 + 10
-emb_size = 256
+emb_size = 1024
 batch_size = 1
+
+prediction_epoch = 20
 
 #################
 # Define models #
@@ -66,18 +68,18 @@ encoder_input = Input(batch_shape=(batch_size, max_test_length, data_dim),
                       dtype='float32',
                       name='encoder_input')
 
-emb_a = TimeDistributed(Dense(emb_size), name='encoder_td_dense')(encoder_input)
+emb_a = TimeDistributed(Dense(256), name='encoder_td_dense')(encoder_input)
 emb_bn = BatchNormalization(name='enc_batch_norm')(emb_a)
 emb_h = LeakyReLU()(emb_bn)
 
 encoder_output = PLSTM(
-    output_dim=1024,
+    output_dim=emb_size,
     # input_shape=(batch_size, max_test_length, data_dim),
     # batch_input_shape=(batch_size, max_test_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
-    # stateful=True,
-    name='encoder_PLSTM'
+    stateful=True,
+    name='encoder_output'
 )(emb_h)
 # encoder_output = LeakyReLU(name='encoder_output')(encoder_PLSTM)
 
@@ -92,7 +94,7 @@ decoder_PLSTM = PLSTM(
     256,
     return_sequences=True,
     consume_less='gpu',
-    # stateful=True,
+    stateful=True,
     name='decoder_PLSTM'
 )(dec_in)
 # dec_ReLU = LeakyReLU()(decoder_PLSTM)
@@ -104,7 +106,7 @@ params_output = PLSTM(
     return_sequences=True,
     consume_less='gpu',
     activation='linear',
-    # stateful=True,
+    stateful=True,
     name='params_output'
     # name='parameters_PLSTM'
 )(dropout_layer)
@@ -126,12 +128,12 @@ decoder_model = Model(input=[decoder_input, feedback_input],
 # Load weights and compile models
 load_weights(encoder_model, 'models/seq2seq_feedback_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-             str(21) + '_lr_' + str(learning_rate) +
+             str(prediction_epoch) + '_lr_' + str(learning_rate) +
              '_weights.h5', 'encoder')
 
 load_weights(decoder_model, 'models/seq2seq_feedback_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-             str(21) + '_lr_' + str(learning_rate) +
+             str(prediction_epoch) + '_lr_' + str(learning_rate) +
              '_weights.h5', 'decoder')
 
 adam = Adam(clipnorm=5)
@@ -264,8 +266,9 @@ for src_spk in speakers:
                 #############################################
                 # Concatenate prediction with feedback data #
                 #############################################
-                feedback_data = decoder_prediction[:, loop_timesteps,
-                                                   :].reshape(1, -1, output_dim)
+                feedback_data = decoder_prediction[
+                                :, loop_timesteps, :
+                                ].reshape(1, -1, output_dim)
 
                 EOS = decoder_prediction[:, loop_timesteps, 43]
                 loop_timesteps += 1
@@ -316,11 +319,15 @@ for src_spk in speakers:
                   str(error_metrics.MCD(
                       trg_test_datatable[
                         i + (src_spk_ind + trg_spk_ind) * len(basenames),
-                        0:int(sum(trg_test_masks[i + (src_spk_ind + trg_spk_ind) * len(basenames), :])),
+                        0:int(sum(trg_test_masks[
+                                i + (src_spk_ind + trg_spk_ind) * len(
+                                    basenames), :])),
                         0:40
                       ],
                       decoder_prediction[
-                        0:int(sum(trg_test_masks[i + (src_spk_ind + trg_spk_ind) * len(basenames), :])),
+                        0:int(sum(trg_test_masks[
+                                i + (src_spk_ind + trg_spk_ind) * len(
+                                    basenames), :])),
                         0:40
                       ]
                   ))
