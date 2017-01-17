@@ -70,16 +70,16 @@ emb_a = TimeDistributed(Dense(emb_size), name='encoder_td_dense')(encoder_input)
 emb_bn = BatchNormalization(name='enc_batch_norm')(emb_a)
 emb_h = LeakyReLU()(emb_bn)
 
-encoder_PLSTM = PLSTM(
-    output_dim=256,
+encoder_output = PLSTM(
+    output_dim=1024,
     # input_shape=(batch_size, max_test_length, data_dim),
     # batch_input_shape=(batch_size, max_test_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
-    stateful=True,
+    # stateful=True,
     name='encoder_PLSTM'
 )(emb_h)
-encoder_output = LeakyReLU(name='encoder_output')(encoder_PLSTM)
+# encoder_output = LeakyReLU(name='encoder_output')(encoder_PLSTM)
 
 # Decoder model
 decoder_input = Input(batch_shape=(batch_size, 1, emb_size), dtype='float32',
@@ -88,21 +88,27 @@ feedback_input = Input(batch_shape=(batch_size, 1, output_dim),
                        name='feedback_in')
 dec_in = merge([decoder_input, feedback_input], mode='concat')
 
-decoder_PLSTM = PLSTM(256, return_sequences=True, consume_less='gpu',
-                      stateful=True, name='decoder_PLSTM')(dec_in)
-dec_ReLU = LeakyReLU()(decoder_PLSTM)
+decoder_PLSTM = PLSTM(
+    256,
+    return_sequences=True,
+    consume_less='gpu',
+    # stateful=True,
+    name='decoder_PLSTM'
+)(dec_in)
+# dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
-dropout_layer = Dropout(0.5)(dec_ReLU)
+dropout_layer = Dropout(0.5)(decoder_PLSTM)
 
-parameters_PLSTM = PLSTM(
+params_output = PLSTM(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
     activation='linear',
-    stateful=True,
-    name='parameters_PLSTM'
+    # stateful=True,
+    name='params_output'
+    # name='parameters_PLSTM'
 )(dropout_layer)
-params_output = LeakyReLU(name='params_output')(parameters_PLSTM)
+# params_output = LeakyReLU(name='params_output')(parameters_PLSTM)
 
 flags_output = TimeDistributed(Dense(
     2,
@@ -120,12 +126,12 @@ decoder_model = Model(input=[decoder_input, feedback_input],
 # Load weights and compile models
 load_weights(encoder_model, 'models/seq2seq_feedback_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-             str(nb_epochs - 1) + '_lr_' + str(learning_rate) +
+             str(21) + '_lr_' + str(learning_rate) +
              '_weights.h5', 'encoder')
 
 load_weights(decoder_model, 'models/seq2seq_feedback_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-             str(nb_epochs - 1) + '_lr_' + str(learning_rate) +
+             str(21) + '_lr_' + str(learning_rate) +
              '_weights.h5', 'decoder')
 
 adam = Adam(clipnorm=5)

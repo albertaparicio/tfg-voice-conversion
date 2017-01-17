@@ -30,7 +30,7 @@ start_time = time()
 # Sizes and constants #
 #######################
 # Batch shape
-batch_size = 50
+batch_size = 20
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
@@ -195,7 +195,8 @@ model = Model(input=[main_input, feedback_in],
 optimizer_name = 'adam'
 adam = Adam(clipnorm=5)
 params_loss = 'mse'
-flags_loss = 'binary_crossentropy'
+flags_loss = 'mse'
+# flags_loss = 'binary_crossentropy'
 
 model.compile(optimizer=adam,
               loss={'params_output': params_loss,
