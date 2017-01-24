@@ -129,12 +129,12 @@ decoder_model = Model(input=[decoder_input, feedback_input],
 load_weights(encoder_model, 'models/seq2seq_feedback_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
              str(prediction_epoch) + '_lr_' + str(learning_rate) +
-             '_weights.h5', 'encoder')
+             '_weights.h5')
 
 load_weights(decoder_model, 'models/seq2seq_feedback_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
              str(prediction_epoch) + '_lr_' + str(learning_rate) +
-             '_weights.h5', 'decoder')
+             '_weights.h5', offset=2)
 
 adam = Adam(clipnorm=5)
 
