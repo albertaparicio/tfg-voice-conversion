@@ -13,9 +13,9 @@ import numpy as np
 import tfglib.seq2seq_datatable as s2s
 import tfglib.seq2seq_normalize as s2s_norm
 from ahoproc_tools import error_metrics
-from keras.layers import BatchNormalization, Dropout
-from keras.layers import Input, TimeDistributed, Dense, merge
-from keras.layers.advanced_activations import LeakyReLU
+from keras.layers import Input, TimeDistributed, Dense, merge, Dropout
+# from keras.layers import BatchNormalization
+# from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.optimizers import Adam
 from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
@@ -57,7 +57,7 @@ data_dim = output_dim + 10 + 10
 emb_size = 1024
 batch_size = 1
 
-prediction_epoch = 20
+prediction_epoch = 24
 
 #################
 # Define models #
@@ -68,9 +68,9 @@ encoder_input = Input(batch_shape=(batch_size, max_test_length, data_dim),
                       dtype='float32',
                       name='encoder_input')
 
-emb_a = TimeDistributed(Dense(256), name='encoder_td_dense')(encoder_input)
-emb_bn = BatchNormalization(name='enc_batch_norm')(emb_a)
-emb_h = LeakyReLU()(emb_bn)
+# emb_a = TimeDistributed(Dense(256), name='encoder_td_dense')(encoder_input)
+# emb_bn = BatchNormalization(name='enc_batch_norm')(emb_a)
+# emb_h = LeakyReLU()(emb_bn)
 
 encoder_output = PLSTM(
     output_dim=emb_size,
@@ -80,7 +80,7 @@ encoder_output = PLSTM(
     consume_less='gpu',
     stateful=True,
     name='encoder_output'
-)(emb_h)
+)(encoder_input)
 # encoder_output = LeakyReLU(name='encoder_output')(encoder_PLSTM)
 
 # Decoder model
