@@ -12,9 +12,9 @@ from time import time
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
-from keras.layers import BatchNormalization, Dropout
-from keras.layers import Input, TimeDistributed, Dense, merge
-from keras.layers.advanced_activations import LeakyReLU
+# from keras.layers import BatchNormalization
+from keras.layers import Input, Dropout, Dense, merge, TimeDistributed
+# from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.core import RepeatVector
 from keras.models import Model
 from keras.optimizers import Adam
@@ -152,16 +152,17 @@ main_input = Input(shape=(max_train_length, data_dim),
                    dtype='float32',
                    name='main_input')
 
-emb_a = TimeDistributed(Dense(emb_size))(main_input)
-emb_bn = BatchNormalization()(emb_a)
-emb_h = LeakyReLU()(emb_bn)
+# emb_a = TimeDistributed(Dense(emb_size))(main_input)
+# emb_bn = BatchNormalization()(emb_a)
+# emb_h = LeakyReLU()(emb_bn)
 
 encoder_PLSTM = PLSTM(
     output_dim=1024,
     # input_shape=(max_train_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
-)(emb_h)
+)(main_input)
+# )(emb_h)
 # enc_ReLU = LeakyReLU()(encoder_PLSTM)
 
 repeat_layer = RepeatVector(max_train_length)(encoder_PLSTM)
@@ -290,7 +291,7 @@ for epoch in range(nb_epochs):
     with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss +
               '_' + optimizer_name + '_epoch_' + str(epoch) + '_lr_' +
               str(learning_rate) + '_model.json', 'w'
-             ) as model_json:
+              ) as model_json:
         model_json.write(model.to_json())
 
 print('Saving training parameters\n' + '=' * 8 * 5)
