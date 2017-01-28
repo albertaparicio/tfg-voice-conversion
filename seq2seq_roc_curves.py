@@ -113,8 +113,8 @@ for src_spk in speakers:
                 'training_results/uv_roc_' + src_spk + '-' + trg_spk +
                 '-' + basenames[i] + '.png',
                 bbox_inches='tight')
-            plt.show()
-            plt.close("all")
+            # plt.show()
+            # plt.close("all")
 
         trg_spk_ind += 1
     src_spk_ind += 1
