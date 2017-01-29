@@ -12,9 +12,7 @@ from time import time
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
-# from keras.layers import BatchNormalization
 from keras.layers import Input, Dropout, Dense, merge, TimeDistributed
-# from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.core import RepeatVector
 from keras.models import Model
 from keras.optimizers import Adam
@@ -29,6 +27,8 @@ start_time = time()
 #######################
 # Sizes and constants #
 #######################
+model_description = 'seq2seq_feedback_plstm'
+
 # Batch shape
 batch_size = 20
 output_dim = 44
@@ -116,12 +116,12 @@ for i in range(src_train_datatable.shape[0]):
 ################################################
 # Split data into training and validation sets #
 ################################################
-# ###################################
-# # TODO ELIMINATE AFTER DEVELOPING #
-# ###################################
+# #################################
+# # TODO COMMENT AFTER DEVELOPING #
+# #################################
 # batch_size = 2
 # nb_epochs = 2
-
+#
 # num = 10
 # src_train_datatable = src_train_datatable[0:num]
 # src_train_masks = src_train_masks[0:num]
@@ -136,11 +136,11 @@ src_valid_data = src_train_datatable[int(np.floor(
 
 trg_train_data = trg_train_datatable[0:int(np.floor(
     trg_train_datatable.shape[0] * (1 - validation_fraction)))]
-trg_train_masks_f = trg_train_masks[0:int(np.floor(
-    trg_train_masks.shape[0] * (1 - validation_fraction)))]
-
 trg_valid_data = trg_train_datatable[int(np.floor(
     trg_train_datatable.shape[0] * (1 - validation_fraction))):]
+
+trg_train_masks_f = trg_train_masks[0:int(np.floor(
+    trg_train_masks.shape[0] * (1 - validation_fraction)))]
 trg_valid_masks_f = trg_train_masks[int(np.floor(
     trg_train_masks.shape[0] * (1 - validation_fraction))):]
 
@@ -161,6 +161,7 @@ encoder_PLSTM = PLSTM(
     # input_shape=(max_train_length, data_dim),
     return_sequences=False,
     consume_less='gpu',
+    # TODO Is this layer stateful?
 )(main_input)
 # )(emb_h)
 # enc_ReLU = LeakyReLU()(encoder_PLSTM)
@@ -171,11 +172,13 @@ repeat_layer = RepeatVector(max_train_length)(encoder_PLSTM)
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
 dec_in = merge([repeat_layer, feedback_in], mode='concat')
 
+# TODO Is this layer stateful?
 decoder_PLSTM = PLSTM(256, return_sequences=True, consume_less='gpu')(dec_in)
 # dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
 dropout_layer = Dropout(0.5)(decoder_PLSTM)
 
+# TODO Is this layer stateful?
 parameters_PLSTM = PLSTM(
     output_dim - 2,
     return_sequences=True,
@@ -283,19 +286,19 @@ for epoch in range(nb_epochs):
     # Saving after each epoch #
     ###########################
     print('Saving model\n' + '=' * 8 * 5)
-    model.save_weights(
-        'models/seq2seq_feedback_' + params_loss + '_' + flags_loss + '_' +
-        optimizer_name + '_epoch_' + str(epoch) + '_lr_' + str(learning_rate) +
-        '_weights.h5')
 
-    with open('models/seq2seq_feedback_' + params_loss + '_' + flags_loss +
-              '_' + optimizer_name + '_epoch_' + str(epoch) + '_lr_' +
-              str(learning_rate) + '_model.json', 'w'
-              ) as model_json:
+    model.save_weights(
+        'models/' + model_description + '_' + params_loss + '_' + flags_loss +
+        '_' + optimizer_name + '_epoch_' + str(epoch) + '_lr_' +
+        str(learning_rate) + '_weights.h5')
+
+    with open('models/' + model_description + '_' + params_loss + '_' +
+              flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
+              '_lr_' + str(learning_rate) + '_model.json', 'w') as model_json:
         model_json.write(model.to_json())
 
 print('Saving training parameters\n' + '=' * 8 * 5)
-with h5py.File('training_results/seq2seq_feedback_training_params.h5',
+with h5py.File('training_results/' + model_description + '_training_params.h5',
                'w') as f:
     f.attrs.create('params_loss', np.string_(params_loss))
     f.attrs.create('flags_loss', np.string_(flags_loss))
@@ -311,20 +314,20 @@ with h5py.File('training_results/seq2seq_feedback_training_params.h5',
 
 print('Saving training results')
 np.savetxt(
-    'training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss +
-    '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-    str(learning_rate) + '_epochs.csv',
-    np.arange(nb_epochs), delimiter=',')
+    'training_results/' + model_description + '_' + params_loss + '_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_epochs.csv', np.arange(nb_epochs), delimiter=','
+)
 np.savetxt(
-    'training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss +
-    '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-    str(learning_rate) + '_loss.csv',
-    training_history, delimiter=',')
+    'training_results/' + model_description + '_' + params_loss + '_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_loss.csv', training_history, delimiter=','
+)
 np.savetxt(
-    'training_results/seq2seq_feedback_' + params_loss + '_' + flags_loss +
-    '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-    str(learning_rate) + '_val_loss.csv',
-    validation_history, delimiter=',')
+    'training_results/' + model_description + '_' + params_loss + '_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_val_loss.csv', validation_history, delimiter=','
+)
 
 print('========================' + '\n' +
       '======= FINISHED =======' + '\n' +

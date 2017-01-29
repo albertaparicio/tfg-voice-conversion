@@ -177,6 +177,7 @@ for src_spk in speakers:
         # for i in range(src_test_datatable.shape[0]):
         for i in range(len(basenames)):
             print(src_spk + '->' + trg_spk + ' ' + basenames[i])
+
             ##################
             # Normalize data #
             ##################
