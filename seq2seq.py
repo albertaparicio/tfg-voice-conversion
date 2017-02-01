@@ -30,7 +30,7 @@ start_time = time()
 model_description = 'seq2seq_feedback_plstm'
 
 # Batch shape
-batch_size = 20
+batch_size = 50
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
