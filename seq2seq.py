@@ -27,7 +27,7 @@ start_time = time()
 #######################
 # Sizes and constants #
 #######################
-model_description = 'seq2seq_feedback_plstm'
+model_description = 'seq2seq_pretrain'
 
 # Batch shape
 batch_size = 50
@@ -37,7 +37,6 @@ emb_size = 256
 
 # Other constants
 nb_epochs = 50
-# lahead = 1  # number of elements ahead that are used to make the prediction
 learning_rate = 0.001
 validation_fraction = 0.25
 
@@ -152,37 +151,24 @@ main_input = Input(shape=(max_train_length, data_dim),
                    dtype='float32',
                    name='main_input')
 
-# emb_a = TimeDistributed(Dense(emb_size))(main_input)
-# emb_bn = BatchNormalization()(emb_a)
-# emb_h = LeakyReLU()(emb_bn)
-
 encoder_PLSTM = PLSTM(
     output_dim=emb_size,
-    # input_shape=(max_train_length, data_dim),
     return_sequences=True,
     consume_less='gpu',
-    # TODO Is this layer stateful?
 )(main_input)
-# )(emb_h)
-# enc_ReLU = LeakyReLU()(encoder_PLSTM)
-
-# repeat_layer = RepeatVector(max_train_length)(encoder_PLSTM)
 
 # Feedback input
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
 dec_in = merge([encoder_PLSTM, feedback_in], mode='concat')
 
-# TODO Is this layer stateful?
 decoder_PLSTM = PLSTM(
     emb_size,
     return_sequences=True,
     consume_less='gpu'
 )(dec_in)
-# dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
 dropout_layer = Dropout(0.5)(decoder_PLSTM)
 
-# TODO Is this layer stateful?
 parameters_PLSTM = PLSTM(
     output_dim - 2,
     return_sequences=True,
@@ -190,7 +176,6 @@ parameters_PLSTM = PLSTM(
     activation='linear',
     name='params_output'
 )(dropout_layer)
-# params_ReLU = LeakyReLU(name='params_output')(parameters_PLSTM)
 
 flags_Dense = TimeDistributed(Dense(
     2,
@@ -204,7 +189,6 @@ optimizer_name = 'adam'
 adam = Adam(clipnorm=5)
 params_loss = 'mse'
 flags_loss = 'mse'
-# flags_loss = 'binary_crossentropy'
 
 model.compile(optimizer=adam,
               loss={'params_output': params_loss,
