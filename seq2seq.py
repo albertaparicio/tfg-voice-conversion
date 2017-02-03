@@ -157,23 +157,27 @@ main_input = Input(shape=(max_train_length, data_dim),
 # emb_h = LeakyReLU()(emb_bn)
 
 encoder_PLSTM = PLSTM(
-    output_dim=1024,
+    output_dim=emb_size,
     # input_shape=(max_train_length, data_dim),
-    return_sequences=False,
+    return_sequences=True,
     consume_less='gpu',
     # TODO Is this layer stateful?
 )(main_input)
 # )(emb_h)
 # enc_ReLU = LeakyReLU()(encoder_PLSTM)
 
-repeat_layer = RepeatVector(max_train_length)(encoder_PLSTM)
+# repeat_layer = RepeatVector(max_train_length)(encoder_PLSTM)
 
 # Feedback input
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
-dec_in = merge([repeat_layer, feedback_in], mode='concat')
+dec_in = merge([encoder_PLSTM, feedback_in], mode='concat')
 
 # TODO Is this layer stateful?
-decoder_PLSTM = PLSTM(256, return_sequences=True, consume_less='gpu')(dec_in)
+decoder_PLSTM = PLSTM(
+    emb_size,
+    return_sequences=True,
+    consume_less='gpu'
+)(dec_in)
 # dec_ReLU = LeakyReLU()(decoder_PLSTM)
 
 dropout_layer = Dropout(0.5)(decoder_PLSTM)

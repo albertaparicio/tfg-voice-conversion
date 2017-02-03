@@ -40,8 +40,10 @@ print('done')
 #############################
 # Load model and parameters #
 #############################
+model_description = 'seq2seq_feedback_plstm'
+
 print('Loading parameters')
-with h5py.File('training_results/seq2seq_feedback_training_params.h5',
+with h5py.File('training_results/' + model_description + '_training_params.h5',
                'r') as f:
     params_loss = f.attrs.get('params_loss').decode('utf-8')
     flags_loss = f.attrs.get('flags_loss').decode('utf-8')
@@ -126,12 +128,12 @@ decoder_model = Model(input=[decoder_input, feedback_input],
                       output=[params_output, flags_output])
 
 # Load weights and compile models
-load_weights(encoder_model, 'models/seq2seq_feedback_' + params_loss +
+load_weights(encoder_model, 'models/' + model_description + '_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
              str(prediction_epoch) + '_lr_' + str(learning_rate) +
              '_weights.h5')
 
-load_weights(decoder_model, 'models/seq2seq_feedback_' + params_loss +
+load_weights(decoder_model, 'models/' + model_description + '_' + params_loss +
              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
              str(prediction_epoch) + '_lr_' + str(learning_rate) +
              '_weights.h5', offset=2)
@@ -218,6 +220,7 @@ for src_spk in speakers:
             max_loop = 1.5 * max_test_length
 
             # Decoder predictions
+            # TODO Fix EOS prediction
             while loop_timesteps < max_test_length:
                 # while EOS < 0.5 and loop_timesteps < max_loop:
                 # print(loop_timesteps)
