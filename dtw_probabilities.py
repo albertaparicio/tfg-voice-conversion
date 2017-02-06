@@ -8,20 +8,29 @@
 from __future__ import print_function
 
 from os import walk, path
+from time import time
 
-import h5py
 import numpy as np
-from keras.utils.generic_utils import Progbar
+from h5py import File as h5_File
+from tfglib.utils import Progbar
+from tfglib.utils import display_time
+
+# Save training start time
+start_time = time()
+
+print('Reading DTW alignment files' + '\n' +
+      '---------------------------' + '\n')
 
 dtw_path = 'data/training/dtw/beam2'
 seen = set()
+n_files = 150
 
 # (number of frames, number of files, 2)
-distribution = np.empty((2000, 150, 2))
+distribution = np.empty((2000, n_files, 2))
 
 for root, dirs, files in walk(dtw_path):
     for index, file in enumerate(files):
-        print(file)
+        # print(file)
 
         dtw_data = np.loadtxt(
             path.join(dtw_path, file),
@@ -43,11 +52,19 @@ for root, dirs, files in walk(dtw_path):
 distribution = distribution.reshape((-1, 2))
 mask = []
 
+print('Removing 0 - 0 alignments' + '\n' +
+      '-------------------------')
+
+progress_bar = Progbar(target=distribution.shape[0])
+progress_bar.update(0)
+
 for row in range(0, distribution.shape[0]):
     if np.array_equal(distribution[row, :], [0, 0]):
         mask.append([True, True])
     else:
         mask.append([False, False])
+
+    progress_bar.update(row + 1)
 
 distribution = np.ma.compress_rows(np.ma.array(distribution, mask=mask))
 
@@ -65,11 +82,8 @@ dist_list = (distribution[:, 0] - distribution[:, 1]).tolist()
 values = []
 probabilities = []
 
-print('Computing probabilities of each repetition' + '\n' +
-      '==========================================')
-
-progress_bar = Progbar(target=len(dist_list))
-progress_bar.update(0)
+print('\n' + '\n' + 'Computing probabilities of each repetition' + '\n' +
+             '------------------------------------------' + '\n')
 
 for index, item in enumerate(dist_list):
     if item not in values:
@@ -77,10 +91,10 @@ for index, item in enumerate(dist_list):
         values.append(item)
         probabilities.append(dist_list.count(item) / len(dist_list))
 
-    progress_bar.update(index + 1)
+print('Saving probabilities to .h5 file' + '\n' +
+      '--------------------------------' + '\n')
 
-print('Saving probabilities\n' + '====================')
-with h5py.File('pretrain_data/dtw_probabilities.h5', 'w') as f:
+with h5_File('pretrain_data/dtw_probabilities.h5', 'w') as f:
     # Save numbers and probabilities
     f.create_dataset(
         'values',
@@ -96,5 +110,11 @@ with h5py.File('pretrain_data/dtw_probabilities.h5', 'w') as f:
     )
 
     f.close()
+
+print('========================' + '\n' +
+      '======= FINISHED =======' + '\n' +
+      '========================')
+
+print('Elapsed time: ' + display_time(time() - start_time))
 
 exit()
