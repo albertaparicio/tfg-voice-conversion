@@ -15,7 +15,7 @@ from h5py import File as h5_File
 from tfglib.utils import Progbar
 from tfglib.utils import display_time
 
-# Save training start time
+# Save processing start time
 start_time = time()
 
 print('Reading DTW alignment files' + '\n' +
