@@ -22,6 +22,7 @@ from keras.optimizers import Adam
 from keras.utils.generic_utils import Progbar
 from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.pretrain_data_params import pretrain_load_data_parameters
+from tfglib.pretrain_data_params import pretrain_save_data_parameters
 from tfglib.pretrain_data_params import pretrain_train_generator
 from tfglib.seq2seq_normalize import maxmin_scaling
 from tfglib.utils import display_time
@@ -34,6 +35,9 @@ start_time = time()
 # Switches #
 ############
 pretrain = True
+
+# Decide if datatable/parameters must be built or can be loaded from a file
+build_datatable = True
 
 #######################
 # Sizes and constants #
@@ -57,20 +61,27 @@ validation_fraction = 0.25
 if pretrain:
     data_path = 'pretrain_data'
 
-    print('Pretraining load data')
-    (
-        max_train_length,
-        spk_max,
-        spk_min,
-        files_list
-    ) = pretrain_load_data_parameters(data_path)
+    if build_datatable:
+        print('Saving pretraining parameters')
+        (
+            max_train_length,
+            spk_max,
+            spk_min,
+            files_list
+        ) = pretrain_save_data_parameters(data_path)
+
+    else:
+        print('Load pretraining parameters')
+        (
+            max_train_length,
+            spk_max,
+            spk_min,
+            files_list
+        ) = pretrain_load_data_parameters(data_path)
 
     train_speakers = spk_max.shape[0]
 
 else:
-    # Decide if datatable must be built or can be loaded from a file
-    build_datatable = False
-
     print('Preparing data\n' + '=' * 8 * 5)
     if build_datatable:
         # Build datatable of training and test data
@@ -178,8 +189,16 @@ main_input = Input(shape=(max_train_length, output_dim),
                    dtype='float32',
                    name='main_input')
 
-src_spk_input = Input(shape=(max_train_length,), dtype='int32', name='src_spk_in')
-trg_spk_input = Input(shape=(max_train_length,), dtype='int32', name='trg_spk_in')
+src_spk_input = Input(
+    shape=(max_train_length,),
+    dtype='int32',
+    name='src_spk_in'
+)
+trg_spk_input = Input(
+    shape=(max_train_length,),
+    dtype='int32',
+    name='trg_spk_in'
+)
 
 embedded_spk_indexes = Embedding(
     input_dim=train_speakers,
@@ -387,21 +406,19 @@ else:
     print('Saving training results')
     np.savetxt(
         'training_results/' + model_description + '_' + params_loss + '_' +
-        flags_loss + '_' + optimizer_name + '_epochs_' + str(
-            nb_epochs) + '_lr_' +
-        str(learning_rate) + '_epochs.csv', np.arange(nb_epochs), delimiter=','
+        flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) +
+        '_lr_' +str(learning_rate) + '_epochs.csv', np.arange(nb_epochs),
+        delimiter=','
     )
 
 np.savetxt(
     'training_results/' + model_description + '_' + params_loss + '_' +
-    flags_loss + '_' + optimizer_name + '_epochs_' + str(
-        nb_epochs) + '_lr_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
     str(learning_rate) + '_loss.csv', training_history, delimiter=','
 )
 np.savetxt(
     'training_results/' + model_description + '_' + params_loss + '_' +
-    flags_loss + '_' + optimizer_name + '_epochs_' + str(
-        nb_epochs) + '_lr_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
     str(learning_rate) + '_val_loss.csv', validation_history, delimiter=','
 )
 
