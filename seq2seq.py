@@ -270,21 +270,20 @@ if pretrain:
     print('Pretraining' + '\n' + '-----------')
 
     # TODO Compute samples per epoch
-    samples_epoch = 100
-    val_samples = 100
+    sampl_epoch = len(files_list) * max_train_length * (1 - validation_fraction)
+    val_samples = len(files_list) * max_train_length * validation_fraction
 
     history = model.fit_generator(
         pretrain_train_generator(
             data_path,
-            dtw_prob_file='dtw_probabilities.h5'
+            batch_size=batch_size
         ),
-        samples_per_epoch=samples_epoch,
+        samples_per_epoch=sampl_epoch,
         nb_epoch=nb_epochs,
         validation_data=pretrain_train_generator(
             data_path,
-            dtw_prob_file='dtw_probabilities.h5',
-            validation=True,
-            val_fraction=0.25
+            batch_size=batch_size,
+            validation=True
         ),
         nb_val_samples=val_samples
     )
@@ -407,7 +406,7 @@ else:
     np.savetxt(
         'training_results/' + model_description + '_' + params_loss + '_' +
         flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) +
-        '_lr_' +str(learning_rate) + '_epochs.csv', np.arange(nb_epochs),
+        '_lr_' + str(learning_rate) + '_epochs.csv', np.arange(nb_epochs),
         delimiter=','
     )
 
