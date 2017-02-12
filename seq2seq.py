@@ -19,6 +19,7 @@ from keras.layers import Input, Dropout, Dense, merge, TimeDistributed
 from keras.layers.core import Lambda
 from keras.models import Model
 from keras.optimizers import Adam
+from keras.callbacks import ModelCheckpoint
 from keras.utils.generic_utils import Progbar
 from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.pretrain_data_params import pretrain_load_data_parameters
@@ -273,6 +274,13 @@ if pretrain:
     sampl_epoch = len(files_list) * max_train_length * (1 - validation_fraction)
     val_samples = len(files_list) * max_train_length * validation_fraction
 
+    checkpointer = ModelCheckpoint(
+        filepath='models/' + model_description + '_' + params_loss + '_' +
+                 flags_loss + '_' + optimizer_name + '_epoch_' + '{epoch:02d}' +
+                 '_lr_' + str(learning_rate) + '_model.h5',
+        verbose=1
+    )
+
     history = model.fit_generator(
         pretrain_train_generator(
             data_path,
@@ -285,7 +293,8 @@ if pretrain:
             batch_size=batch_size,
             validation=True
         ),
-        nb_val_samples=val_samples
+        nb_val_samples=val_samples,
+        callbacks=[checkpointer]
     )
 
     epochs = history.epoch
