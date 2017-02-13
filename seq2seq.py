@@ -402,9 +402,8 @@ if pretrain:
             '_lr_' + str(learning_rate) + '_weights.h5')
 
         with open('models/' + model_description + '_' + params_loss + '_' +
-                          flags_loss + '_' + optimizer_name + '_epoch_' + str(
-            epoch) +
-                          '_lr_' + str(learning_rate) + '_model.json', 'w'
+                  flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
+                  '_lr_' + str(learning_rate) + '_model.json', 'w'
                   ) as model_json:
             model_json.write(model.to_json())
 
