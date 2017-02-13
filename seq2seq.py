@@ -9,12 +9,13 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+from sys import version_info as py_version
 from time import time
 
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
-from keras.callbacks import ModelCheckpoint
+from ahoproc_tools import error_metrics
 from keras.layers import Embedding
 from keras.layers import Input, Dropout, Dense, merge, TimeDistributed
 from keras.layers.core import Lambda
@@ -66,8 +67,8 @@ if pretrain:
         print('Saving pretraining parameters')
         (
             max_train_length,
-            spk_max,
-            spk_min,
+            train_speakers_max,
+            train_speakers_min,
             files_list
         ) = pretrain_save_data_parameters(data_path)
 
@@ -75,12 +76,21 @@ if pretrain:
         print('Load pretraining parameters')
         (
             max_train_length,
-            spk_max,
-            spk_min,
+            train_speakers_max,
+            train_speakers_min,
             files_list
         ) = pretrain_load_data_parameters(data_path)
 
-    train_speakers = spk_max.shape[0]
+    train_speakers = train_speakers_max.shape[0]
+
+    # #################################
+    # # TODO COMMENT AFTER DEVELOPING #
+    # #################################
+    # batch_size = 2
+    # nb_epochs = 2
+    #
+    # files_list = files_list[:5]
+    # #################################
 
 else:
     print('Preparing data\n' + '=' * 8 * 5)
@@ -270,48 +280,149 @@ model.compile(
 if pretrain:
     print('Pretraining' + '\n' + '-----------')
 
-    val_samples = int(np.floor(len(files_list) * validation_fraction))
+    training_history = []
+    validation_history = []
+    val_mcd = []
+    val_pitch_rmse = []
+    val_uv_accuracy = []
+
+    val_samples = int(len(files_list) * validation_fraction)
     sampl_epoch = int(len(files_list) - val_samples)
 
-    checkpointer = ModelCheckpoint(
-        filepath='models/' + model_description + '_' + params_loss + '_' +
-                 flags_loss + '_' + optimizer_name + '_epoch_' + '{epoch:02d}' +
-                 '_lr_' + str(learning_rate) + '_model.h5',
-        verbose=1
+    batch_generator = pretrain_train_generator(data_path, batch_size=batch_size)
+    val_generator = pretrain_train_generator(
+        data_path,
+        batch_size=batch_size,
+        validation=True
     )
 
-    # TODO Canviar fit_generator per un train_on_batch
-    # Iterar per batches - dos variables
-    # for x,y_true,mask in pretrain_train_generator
-    #   model.train_on_batch
-    #   y_pred = model.predict(mateix batch en què he entrenat)
-    #   Reshape per a posar-ho en 2D, i aplicar mètriques del Santi
-    history = model.fit_generator(
-        pretrain_train_generator(
-            data_path,
+    for epoch in range(nb_epochs):
+        print('Epoch {} of {}'.format(epoch + 1, nb_epochs))
+
+        nb_batches = int(np.ceil(sampl_epoch / batch_size))
+        progress_bar = Progbar(target=nb_batches)
+
+        epoch_train_partial_loss = []
+
+        try:
+            progress_bar.update(0)
+        except OverflowError as err:
+            raise Exception('nb_batches is 0. Please check the training data')
+
+        for index in range(nb_batches):
+            train_in, train_out, train_mask = next(batch_generator)
+            epoch_train_partial_loss.append(
+                model.train_on_batch(
+                    train_in,
+                    train_out,
+                    sample_weight=train_mask
+                )
+            )
+
+            progress_bar.update(index + 1)
+
+        # Obtain validation losses and metrics
+        (val_input, val_target, val_mask) = next(val_generator)
+
+        epoch_val_loss = model.evaluate(
+            val_input,
+            val_target,
+            sample_weight=val_mask,
             batch_size=batch_size
-        ),
-        samples_per_epoch=sampl_epoch,
-        nb_epoch=nb_epochs,
-        validation_data=pretrain_train_generator(
-            data_path,
-            batch_size=batch_size,
-            validation=True
-        ),
-        nb_val_samples=val_samples,
-        callbacks=[checkpointer]
-    )
+        )
 
-    epochs = history.epoch
-    training_history = history.history['loss']
-    validation_history = history.history['val_loss']
+        # Mask data
+        val_pred = model.predict_on_batch(val_input)
 
-    print('Saving training results')
+        for sequence in range(len(val_pred)):
+            val_pred[sequence] = np.ma.array(
+                val_pred[sequence],
+                mask=np.logical_not(np.repeat(
+                    val_mask['sample_weights'],
+                    val_pred[sequence].shape[2],
+                    axis=2
+                ))
+            )
+
+        if py_version.major == 3:
+            dict_iter = val_target.items()
+        else:
+            dict_iter = val_target.iteritems()
+
+        for key, value in dict_iter:
+            val_target[key] = np.ma.array(
+                value,
+                mask=np.logical_not(np.repeat(
+                    val_mask['sample_weights'],
+                    value.shape[2],
+                    axis=2
+                ))
+            )
+
+        # Compute validation metrics
+        val_mcd.append(error_metrics.MCD(
+            np.ma.compress_rows(
+                val_target['params_output'][:, :, 0:40].reshape((-1, 40))),
+            np.ma.compress_rows(val_pred[0][:, :, 0:40].reshape((-1, 40)))
+        ))
+
+        val_pitch_rmse.append(error_metrics.RMSE(
+            np.ma.compress_rows(
+                val_target['params_output'][:, :, 40].reshape((-1, 1))),
+            np.ma.compress_rows(val_pred[0][:, :, 40].reshape((-1, 1)))
+        )[0])
+
+        uv_accuracy, _, _, _ = error_metrics.AFPR(
+            np.ma.compress_rows(
+                np.round(val_target['flags_output'][:, :, 0]).reshape((-1, 1))),
+            np.ma.compress_rows(np.round(val_pred[1][:, :, 0]).reshape((-1, 1)))
+        )
+        val_uv_accuracy.append(uv_accuracy)
+
+        epoch_train_loss = np.mean(np.array(epoch_train_partial_loss), axis=0)
+
+        training_history.append(epoch_train_loss)
+        validation_history.append(epoch_val_loss)
+
+        # Generate epoch report
+        print('loss: ' + str(training_history[-1]) +
+              ' - val_loss: ' + str(validation_history[-1]) + '\n')
+        print('Cepstrum MCD: ' + str(val_mcd[-1]) + ' dB')
+        print('Pitch RMSE: ' + str(val_pitch_rmse[-1]))
+        print('U/V accuracy: ' + str(val_uv_accuracy[-1]))
+
+        ###########################
+        # Save model after each epoch #
+        ###########################
+        print('Saving model\n' + '=' * 8 * 5)
+
+        model.save_weights(
+            'models/' + model_description + '_' + params_loss + '_' +
+            flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
+            '_lr_' + str(learning_rate) + '_weights.h5')
+
+        with open('models/' + model_description + '_' + params_loss + '_' +
+                          flags_loss + '_' + optimizer_name + '_epoch_' + str(
+            epoch) +
+                          '_lr_' + str(learning_rate) + '_model.json', 'w'
+                  ) as model_json:
+            model_json.write(model.to_json())
+
+    # Save metrics
     np.savetxt(
         'training_results/' + model_description + '_' + params_loss + '_' +
-        flags_loss + '_' + optimizer_name + '_epochs_' + str(
-            nb_epochs) + '_lr_' +
-        str(learning_rate) + '_epochs.csv', epochs, delimiter=','
+        flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) +
+        '_lr_' + str(learning_rate) + '_mcd.csv', val_mcd, delimiter=','
+    )
+    np.savetxt(
+        'training_results/' + model_description + '_' + params_loss + '_' +
+        flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) +
+        '_lr_' + str(learning_rate) + '_rmse.csv', val_pitch_rmse, delimiter=','
+    )
+    np.savetxt(
+        'training_results/' + model_description + '_' + params_loss + '_' +
+        flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) +
+        '_lr_' + str(learning_rate) + '_acc.csv', val_uv_accuracy, delimiter=','
     )
 
 else:
@@ -381,9 +492,7 @@ else:
 
         # Generate epoch report
         print('loss: ' + str(training_history[-1]) +
-              ' - val_loss: ' + str(validation_history[-1]) +
-              '\n'  # + '-' * 24
-              )
+              ' - val_loss: ' + str(validation_history[-1]) + '\n')
         print()
 
         ###########################
@@ -402,27 +511,27 @@ else:
                   ) as model_json:
             model_json.write(model.to_json())
 
-    print('Saving training parameters\n' + '=' * 8 * 5)
-    with h5py.File('training_results/' + model_description +
-                   '_training_params.h5', 'w') as f:
-        f.attrs.create('params_loss', np.string_(params_loss))
-        f.attrs.create('flags_loss', np.string_(flags_loss))
-        f.attrs.create('optimizer', np.string_(optimizer_name))
-        f.attrs.create('epochs', nb_epochs, dtype=int)
-        f.attrs.create('learning_rate', learning_rate)
-        f.attrs.create('train_speakers_max', train_speakers_max)
-        f.attrs.create('train_speakers_min', train_speakers_min)
-        f.attrs.create('metrics_names',
-                       [np.string_(name) for name in model.metrics_names]
-                       )
+print('Saving training parameters\n' + '=' * 8 * 5)
+with h5py.File('training_results/' + model_description +
+               '_training_params.h5', 'w') as f:
+    f.attrs.create('params_loss', np.string_(params_loss))
+    f.attrs.create('flags_loss', np.string_(flags_loss))
+    f.attrs.create('optimizer', np.string_(optimizer_name))
+    f.attrs.create('epochs', nb_epochs, dtype=int)
+    f.attrs.create('learning_rate', learning_rate)
+    f.attrs.create('train_speakers_max', train_speakers_max)
+    f.attrs.create('train_speakers_min', train_speakers_min)
+    f.attrs.create('metrics_names',
+                   [np.string_(name) for name in model.metrics_names]
+                   )
 
-    print('Saving training results')
-    np.savetxt(
-        'training_results/' + model_description + '_' + params_loss + '_' +
-        flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) +
-        '_lr_' + str(learning_rate) + '_epochs.csv', np.arange(nb_epochs),
-        delimiter=','
-    )
+print('Saving training results')
+np.savetxt(
+    'training_results/' + model_description + '_' + params_loss + '_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) +
+    '_lr_' + str(learning_rate) + '_epochs.csv', np.arange(nb_epochs),
+    delimiter=','
+)
 
 np.savetxt(
     'training_results/' + model_description + '_' + params_loss + '_' +

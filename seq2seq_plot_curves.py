@@ -36,7 +36,7 @@ val_losses = np.loadtxt(
 assert (val_losses.size == losses.size)
 
 # ##############################################
-# # TODO Delete after dev
+# # TODO Comment after dev
 # metrics_names = ['loss', 'params_output_loss', 'flags_output_loss']
 #
 # ##############################################
