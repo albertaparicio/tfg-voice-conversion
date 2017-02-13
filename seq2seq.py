@@ -38,7 +38,7 @@ start_time = time()
 pretrain = True
 
 # Decide if datatable/parameters must be built or can be loaded from a file
-build_datatable = True
+build_datatable = False
 
 #######################
 # Sizes and constants #
@@ -46,13 +46,13 @@ build_datatable = True
 model_description = 'seq2seq_pretrain'
 
 # Batch shape
-batch_size = 50
+batch_size = 10
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
 
 # Other constants
-nb_epochs = 50
+nb_epochs = 20
 learning_rate = 0.001
 validation_fraction = 0.25
 
@@ -271,8 +271,8 @@ if pretrain:
     print('Pretraining' + '\n' + '-----------')
 
     # TODO Compute samples per epoch
-    sampl_epoch = len(files_list) * max_train_length * (1 - validation_fraction)
-    val_samples = len(files_list) * max_train_length * validation_fraction
+    sampl_epoch = len(files_list) * (1 - validation_fraction)
+    val_samples = len(files_list) * validation_fraction
 
     checkpointer = ModelCheckpoint(
         filepath='models/' + model_description + '_' + params_loss + '_' +
