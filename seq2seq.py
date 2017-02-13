@@ -14,12 +14,12 @@ from time import time
 import h5py
 import numpy as np
 import tfglib.seq2seq_datatable as s2s
+from keras.callbacks import ModelCheckpoint
 from keras.layers import Embedding
 from keras.layers import Input, Dropout, Dense, merge, TimeDistributed
 from keras.layers.core import Lambda
 from keras.models import Model
 from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint
 from keras.utils.generic_utils import Progbar
 from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.pretrain_data_params import pretrain_load_data_parameters
@@ -270,9 +270,8 @@ model.compile(
 if pretrain:
     print('Pretraining' + '\n' + '-----------')
 
-    # TODO Compute samples per epoch
-    sampl_epoch = len(files_list) * (1 - validation_fraction)
-    val_samples = len(files_list) * validation_fraction
+    val_samples = int(np.floor(len(files_list) * validation_fraction))
+    sampl_epoch = int(len(files_list) - val_samples)
 
     checkpointer = ModelCheckpoint(
         filepath='models/' + model_description + '_' + params_loss + '_' +
@@ -281,6 +280,12 @@ if pretrain:
         verbose=1
     )
 
+    # TODO Canviar fit_generator per un train_on_batch
+    # Iterar per batches - dos variables
+    # for x,y_true,mask in pretrain_train_generator
+    #   model.train_on_batch
+    #   y_pred = model.predict(mateix batch en què he entrenat)
+    #   Reshape per a posar-ho en 2D, i aplicar mètriques del Santi
     history = model.fit_generator(
         pretrain_train_generator(
             data_path,
