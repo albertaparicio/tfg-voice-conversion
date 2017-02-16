@@ -47,13 +47,14 @@ build_datatable = False
 model_description = 'seq2seq_pretrain'
 
 # Batch shape
-batch_size = 10
+batch_size = 12
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
 
 # Other constants
 nb_epochs = 20
+start_epoch = 7
 learning_rate = 0.001
 validation_fraction = 0.25
 
@@ -269,6 +270,12 @@ adam = Adam(clipnorm=5)
 params_loss = 'mse'
 flags_loss = 'mse'
 
+# Load weights from previous training
+model.load_weights(model, 'models/' + model_description + '_' + params_loss +
+                   '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+                   str(start_epoch) + '_lr_' + str(learning_rate) +
+                   '_weights.h5')
+
 model.compile(
     optimizer=adam, sample_weight_mode="temporal",
     loss={'params_output': params_loss, 'flags_output': flags_loss}
@@ -296,7 +303,7 @@ if pretrain:
         validation=True
     )
 
-    for epoch in range(nb_epochs):
+    for epoch in range(start_epoch+1,nb_epochs):
         print('Epoch {} of {}'.format(epoch + 1, nb_epochs))
 
         nb_batches = int(np.ceil(sampl_epoch / batch_size))
