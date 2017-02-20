@@ -271,7 +271,7 @@ params_loss = 'mse'
 flags_loss = 'mse'
 
 # Load weights from previous training
-model.load_weights(model, 'models/' + model_description + '_' + params_loss +
+model.load_weights('models/' + model_description + '_' + params_loss +
                    '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
                    str(start_epoch) + '_lr_' + str(learning_rate) +
                    '_weights.h5')
@@ -303,7 +303,7 @@ if pretrain:
         validation=True
     )
 
-    for epoch in range(start_epoch+1,nb_epochs):
+    for epoch in range(start_epoch, nb_epochs):
         print('Epoch {} of {}'.format(epoch + 1, nb_epochs))
 
         nb_batches = int(np.ceil(sampl_epoch / batch_size))
