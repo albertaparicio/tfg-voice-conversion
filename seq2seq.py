@@ -39,12 +39,12 @@ start_time = time()
 pretrain = True
 
 # Decide if datatable/parameters must be built or can be loaded from a file
-build_datatable = False
+build_datatable = True
 
 #######################
 # Sizes and constants #
 #######################
-model_description = 'seq2seq_pretrain'
+model_description = 'DEV_seq2seq_pretrain'
 
 # Batch shape
 batch_size = 12
@@ -54,7 +54,7 @@ emb_size = 256
 
 # Other constants
 nb_epochs = 20
-start_epoch = 7
+start_epoch = 0
 learning_rate = 0.001
 validation_fraction = 0.25
 
@@ -62,7 +62,7 @@ validation_fraction = 0.25
 # Load data #
 #############
 if pretrain:
-    data_path = 'pretrain_data'
+    data_path = 'pretrain_data/training'
 
     if build_datatable:
         print('Saving pretraining parameters')
@@ -84,14 +84,14 @@ if pretrain:
 
     train_speakers = train_speakers_max.shape[0]
 
-    # #################################
-    # # TODO COMMENT AFTER DEVELOPING #
-    # #################################
-    # batch_size = 2
-    # nb_epochs = 2
-    #
-    # files_list = files_list[:5]
-    # #################################
+    #################################
+    # TODO COMMENT AFTER DEVELOPING #
+    #################################
+    batch_size = 2
+    nb_epochs = 1
+
+    files_list = files_list[:5]
+    #################################
 
 else:
     print('Preparing data\n' + '=' * 8 * 5)
@@ -215,7 +215,8 @@ trg_spk_input = Input(
 embedded_spk_indexes = Embedding(
     input_dim=train_speakers,
     output_dim=5,
-    input_length=max_train_length
+    input_length=max_train_length,
+    name='spk_index_embedding'
 )
 
 merged_parameters = merge(
@@ -223,18 +224,21 @@ merged_parameters = merge(
      embedded_spk_indexes(src_spk_input),
      embedded_spk_indexes(trg_spk_input)
      ],
-    mode='concat'
+    mode='concat',
+    name='inputs_merge'
 )
 
 encoder_PLSTM = PLSTM(
     output_dim=emb_size,
     return_sequences=True,
     consume_less='gpu',
+    name='encoder_PLSTM'
 )(merged_parameters)
 
 reversed_encoder = Lambda(
     reverse_encoder_output,
-    output_shape=reversed_output_shape
+    output_shape=reversed_output_shape,
+    name='reversed_encoder'
 )(encoder_PLSTM)
 
 # Feedback input
@@ -244,7 +248,8 @@ dec_in = merge([reversed_encoder, feedback_in], mode='concat')
 decoder_PLSTM = PLSTM(
     emb_size,
     return_sequences=True,
-    consume_less='gpu'
+    consume_less='gpu',
+    name='decoder_PLSTM'
 )(dec_in)
 
 dropout_layer = Dropout(0.5)(decoder_PLSTM)
@@ -270,11 +275,11 @@ adam = Adam(clipnorm=5)
 params_loss = 'mse'
 flags_loss = 'mse'
 
-# Load weights from previous training
-model.load_weights('models/' + model_description + '_' + params_loss +
-                   '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-                   str(start_epoch) + '_lr_' + str(learning_rate) +
-                   '_weights.h5')
+# # Load weights from previous training
+# model.load_weights('models/' + model_description + '_' + params_loss +
+#                    '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+#                    str(start_epoch) + '_lr_' + str(learning_rate) +
+#                    '_weights.h5')
 
 model.compile(
     optimizer=adam, sample_weight_mode="temporal",
