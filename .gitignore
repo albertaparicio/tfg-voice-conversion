@@ -39,12 +39,18 @@ data/test/s2s_predicted/
 /data/seq2seq_test_datatable.h5
 /data/seq2seq_train_datatable.h5
 
-/pretrain_data/73/
-/pretrain_data/72/
-/pretrain_data/80/
-/pretrain_data/79/
-/pretrain_data/75/
-/pretrain_data/76/
+/pretrain_data/training/73/
+/pretrain_data/training/72/
+/pretrain_data/training/80/
+/pretrain_data/training/79/
+/pretrain_data/training/75/
+/pretrain_data/training/76/
+/pretrain_data/test/73/
+/pretrain_data/test/72/
+/pretrain_data/test/80/
+/pretrain_data/test/79/
+/pretrain_data/test/75/
+/pretrain_data/test/76/
 
 ### Windows template
 # Windows image file caches
