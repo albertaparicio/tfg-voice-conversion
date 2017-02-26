@@ -19,5 +19,5 @@
 
 set -o nounset                              # Treat unset variables as an error
 
-readlink -f ./**/* | grep --regexp=.fv$ > fv_guia.list
+find $(readlink -f ".") -name "*" | grep --regexp=.fv$ > fv_guia.list
 python `which interpolate.py` --vf_guia=fv_guia.list --no-uv
