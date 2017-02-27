@@ -39,12 +39,12 @@ start_time = time()
 pretrain = True
 
 # Decide if datatable/parameters must be built or can be loaded from a file
-build_datatable = True
+build_datatable = False
 
 #######################
 # Sizes and constants #
 #######################
-model_description = 'DEV_seq2seq_pretrain'
+model_description = 'seq2seq_pretrain'
 
 # Batch shape
 batch_size = 12
@@ -84,14 +84,14 @@ if pretrain:
 
     train_speakers = train_speakers_max.shape[0]
 
-    #################################
-    # TODO COMMENT AFTER DEVELOPING #
-    #################################
-    batch_size = 2
-    nb_epochs = 1
-
-    files_list = files_list[:5]
-    #################################
+    # #################################
+    # # TODO COMMENT AFTER DEVELOPING #
+    # #################################
+    # batch_size = 2
+    # nb_epochs = 1
+    #
+    # files_list = files_list[:5]
+    # #################################
 
 else:
     print('Preparing data\n' + '=' * 8 * 5)
