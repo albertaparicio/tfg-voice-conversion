@@ -21,6 +21,7 @@ from keras.layers import Input, TimeDistributed, Dense, merge, Dropout
 from keras.layers.core import Lambda
 from keras.models import Model
 from keras.optimizers import Adam
+from keras.utils.generic_utils import Progbar
 from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.pretrain_data_params import prepare_pretrain_slice
 from tfglib.pretrain_data_params import pretrain_load_data_parameters
@@ -281,10 +282,12 @@ if pretrain:
         max_loop = 1.5 * max_test_length
 
         # Decoder predictions
+        progress_bar = Progbar(target=max_test_length)
+        progress_bar.update(0)
+
         # TODO Fix EOS prediction
         while loop_timesteps < max_test_length:
             # while EOS < 0.5 and loop_timesteps < max_loop:
-            # print(loop_timesteps)
 
             # Predict each frame separately
             for index in range(encoder_prediction.shape[1]):
@@ -320,6 +323,8 @@ if pretrain:
 
             EOS = decoder_prediction[:, loop_timesteps, 43]
             loop_timesteps += 1
+
+            progress_bar.update(loop_timesteps)
 
         # There is no need to un-zero-pad, since the while loop stops
         # when an EOS flag is found
