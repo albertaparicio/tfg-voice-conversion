@@ -281,7 +281,7 @@ if pretrain:
         # TODO Fix EOS prediction
         while loop_timesteps < max_test_length:
             # while EOS < 0.5 and loop_timesteps < max_loop:
-            # print(loop_timesteps)
+            print(loop_timesteps)
 
             # Predict each frame separately
             for index in range(encoder_prediction.shape[1]):
