@@ -286,40 +286,40 @@ if pretrain:
         progress_bar.update(0)
 
         # TODO Fix EOS prediction
-        while loop_timesteps < max_test_length:
-            # while EOS < 0.5 and loop_timesteps < max_loop:
+        # while loop_timesteps < max_test_length:
+        while EOS < 0.5 and loop_timesteps < max_test_length:
 
             # Predict each frame separately
-            for index in range(encoder_prediction.shape[1]):
-                [partial_prediction[:, :, 0:42],
-                 partial_prediction[:, :, 42:44]
-                 ] = decoder_model.predict_on_batch(
-                    {'decoder_input': encoder_prediction[:, index, :].
-                        reshape(1, -1, emb_size),
-                     'feedback_in': feedback_data}
-                )
+            # for index in range(encoder_prediction.shape[1]):
+            [partial_prediction[:, :, 0:42],
+             partial_prediction[:, :, 42:44]
+             ] = decoder_model.predict_on_batch(
+                {'decoder_input': encoder_prediction[:, loop_timesteps, :].
+                    reshape(1, -1, emb_size),
+                 'feedback_in': feedback_data}
+            )
 
-                # Unscale partial prediction
-                partial_prediction[
-                    :, :, 0:42
-                ] = partial_prediction[:, :, 0:42].reshape(-1, 42) * (
-                    train_speakers_max[int(src_spk_in[0, index]), :] -
-                    train_speakers_min[int(src_spk_in[0, index]), :]
-                ) + train_speakers_min[int(src_spk_in[0, index]), :]
+            # Unscale partial prediction
+            partial_prediction[
+                :, :, 0:42
+            ] = partial_prediction[:, :, 0:42].reshape(-1, 42) * (
+                train_speakers_max[int(src_spk_in[0, loop_timesteps]), :] -
+                train_speakers_min[int(src_spk_in[0, loop_timesteps]), :]
+            ) + train_speakers_min[int(src_spk_in[0, loop_timesteps]), :]
 
-                # Round U/V flag
-                partial_prediction[:, :, 42] = np.round(
-                    partial_prediction[:, :, 42])
+            # Round U/V flag
+            partial_prediction[:, :, 42] = np.round(
+                partial_prediction[:, :, 42])
 
-                # Apply u/v flags to lf0 and mvf
-                if partial_prediction[:, :, 42] == 0:
-                    partial_prediction[:, :, 40] = -1e+10  # lf0
-                    partial_prediction[:, :, 41] = 1000  # mvf
+            # Apply u/v flags to lf0 and mvf
+            if partial_prediction[:, :, 42] == 0:
+                partial_prediction[:, :, 40] = -1e+10  # lf0
+                partial_prediction[:, :, 41] = 1000  # mvf
 
-                decoder_prediction = np.concatenate(
-                    (decoder_prediction, partial_prediction), axis=1)
+            decoder_prediction = np.concatenate(
+                (decoder_prediction, partial_prediction), axis=1)
 
-                feedback_data = partial_prediction
+            feedback_data = partial_prediction
 
             EOS = decoder_prediction[:, loop_timesteps, 43]
             loop_timesteps += 1

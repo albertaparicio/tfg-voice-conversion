@@ -5,6 +5,8 @@
 # to map the source's sequence parameters to the target's sequence parameters
 
 # TODO Document and explain steps
+# TODO subsitute print calls for logging.info calls when applicable
+# https://docs.python.org/2/howto/logging.html#logging-basic-tutorial
 
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
