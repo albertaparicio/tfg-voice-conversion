@@ -266,3 +266,5 @@ Session.vim
 # auto-generated tag files
 tags
 /pretrain_data/test/pretrain_basenames.list
+/pretrain_data/test/pretrain_params.h5
+/predicted_pretrain_data/

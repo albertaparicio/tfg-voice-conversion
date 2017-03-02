@@ -363,9 +363,12 @@ if pretrain:
         )
 
         # Display MCD
-        print('MCD = ' +
-              str(error_metrics.MCD(
-                  main_input[0, :, 0:40], decoder_prediction[:, 0:40]
+        print('\n'+'MCD = ' + str(error_metrics.MCD(
+                  main_input[0, :, 0:40] *
+                  (train_speakers_max[int(src_spk_in[0, 0]), 0:40] -
+                   train_speakers_min[int(src_spk_in[0, 0]), 0:40]
+                   ) + (train_speakers_min[int(src_spk_in[0, 0]), 0:40]),
+                  decoder_prediction[:, 0:40]
               )))
 
 else:
