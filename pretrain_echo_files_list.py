@@ -5,12 +5,19 @@
 from __future__ import print_function
 from tfglib.pretrain_data_params import pretrain_load_data_parameters
 from os.path import join
+from h5py import File
 
 data_path = 'pretrain_data/test'
+params_file='pretrain_params.h5'
 
-(_,_,_,test_files_list) = pretrain_load_data_parameters(data_path)
+with File(join(data_path, params_file), 'r') as file:
+    files_list_encoded = file['files_list'][:]
+    test_files_list = [n[0] for n in files_list_encoded]
 
-with open(join(data_path, 'basenames.list'), 'w') as thefile:
+
+# (_,_,_,test_files_list) = pretrain_load_data_parameters(data_path)
+
+with open(join(data_path, 'pretrain_basenames.list'), 'w') as thefile:
     for item in test_files_list:
         thefile.write("%s\n" % item.decode('utf-8'))
 
