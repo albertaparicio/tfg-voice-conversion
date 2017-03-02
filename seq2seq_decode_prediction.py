@@ -308,6 +308,8 @@ if pretrain:
             ) + train_speakers_min[int(src_spk_in[0, loop_timesteps]), :]
 
             # Round U/V flag
+            raw_uv_flags = np.append(raw_uv_flags, partial_prediction[0, 0, 42])
+
             partial_prediction[:, :, 42] = np.round(
                 partial_prediction[:, :, 42])
 
