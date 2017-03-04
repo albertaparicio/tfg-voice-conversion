@@ -34,13 +34,13 @@ from tfglib.utils import reverse_encoder_output, reversed_output_shape
 pretrain = True
 
 # Decide if datatable/parameters must be built or can be loaded from a file
-build_datatable = False
+build_datatable = True
 
 #############
 # Load data #
 #############
 if pretrain:
-    data_path = 'pretrain_data/test'
+    data_path = 'pretrain_data/training_test'
 
     if build_datatable:
         print('Saving pretraining parameters')
