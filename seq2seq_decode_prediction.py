@@ -321,7 +321,8 @@ if pretrain:
             decoder_prediction = np.concatenate(
                 (decoder_prediction, partial_prediction), axis=1)
 
-            feedback_data = partial_prediction
+            # feedback_data = partial_prediction
+            feedback_data = main_input[0, loop_timesteps, :].reshape(1, 1, 44)
 
             EOS = decoder_prediction[:, loop_timesteps, 43]
             loop_timesteps += 1
