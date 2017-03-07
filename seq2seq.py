@@ -5,7 +5,7 @@
 # to map the source's sequence parameters to the target's sequence parameters
 
 # TODO Document and explain steps
-# TODO subsitute print calls for logging.info calls when applicable
+# TODO substitute print calls for logging.info calls when applicable
 # https://docs.python.org/2/howto/logging.html#logging-basic-tutorial
 
 # This import makes Python use 'print' as in Python 3.x
@@ -20,7 +20,6 @@ import tfglib.seq2seq_datatable as s2s
 from ahoproc_tools import error_metrics
 from keras.layers import Embedding
 from keras.layers import Input, Dropout, Dense, merge, TimeDistributed
-from keras.layers.core import Lambda
 from keras.layers.recurrent import LSTM
 from keras.models import Model
 from keras.optimizers import Adam
@@ -30,7 +29,6 @@ from tfglib.pretrain_data_params import pretrain_save_data_parameters
 from tfglib.pretrain_data_params import pretrain_train_generator
 from tfglib.seq2seq_normalize import maxmin_scaling
 from tfglib.utils import display_time
-from tfglib.utils import reverse_encoder_output, reversed_output_shape
 
 # Save training start time
 start_time = time()
@@ -43,10 +41,13 @@ pretrain = True
 # Decide if datatable/parameters must be built or can be loaded from a file
 build_datatable = False
 
+# Decide if the model must use weights from a previous training
+load_weights = False
+
 #######################
 # Sizes and constants #
 #######################
-model_description = 'seq2seq_pretrain_reverse-fix'
+model_description = 'seq2seq_pretrain_bidirectional'
 
 # Batch shape
 batch_size = 40
@@ -56,9 +57,13 @@ emb_size = 256
 
 # Other constants
 nb_epochs = 20
-start_epoch = 0
 learning_rate = 0.001
 validation_fraction = 0.25
+
+if load_weights:
+    start_epoch = 5
+else:
+    start_epoch = 0
 
 #############
 # Load data #
@@ -93,6 +98,8 @@ if pretrain:
     # nb_epochs = 1
     #
     # files_list = files_list[:5]
+    #
+    # model_description = 'DEV_' + model_description
     # #################################
 
 else:
@@ -178,6 +185,8 @@ else:
     # src_train_masks = src_train_masks[0:num]
     # trg_train_datatable = trg_train_datatable[0:num]
     # trg_train_masks = trg_train_masks[0:num]
+    #
+    # model_description = 'DEV_' + model_description
     # #################################################
 
     src_train_data = src_train_datatable[0:int(np.floor(
@@ -237,15 +246,9 @@ encoder_LSTM = LSTM(
     name='encoder_LSTM'
 )(merged_parameters)
 
-reversed_encoder = Lambda(
-    reverse_encoder_output,
-    output_shape=reversed_output_shape,
-    name='reversed_encoder'
-)(encoder_LSTM)
-
 # Feedback input
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
-dec_in = merge([reversed_encoder, feedback_in], mode='concat')
+dec_in = merge([encoder_LSTM, feedback_in], mode='concat')
 
 decoder_LSTM = LSTM(
     emb_size,
@@ -277,11 +280,12 @@ adam = Adam(clipnorm=5)
 params_loss = 'mse'
 flags_loss = 'binary_crossentropy'
 
-# # Load weights from previous training
-# model.load_weights('models/' + model_description + '_' + params_loss +
-# '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-# str(start_epoch) + '_lr_' + str(learning_rate) +
-# '_weights.h5')
+if load_weights:
+    # Load weights from previous training
+    model.load_weights('models/' + model_description + '_' + params_loss +
+                       '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+                       str(start_epoch) + '_lr_' + str(learning_rate) +
+                       '_weights.h5')
 
 model.compile(
     optimizer=adam, sample_weight_mode="temporal",
