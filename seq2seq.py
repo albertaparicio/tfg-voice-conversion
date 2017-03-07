@@ -239,16 +239,32 @@ merged_parameters = merge(
     name='inputs_merge'
 )
 
-encoder_LSTM = LSTM(
+# Bidirectional encoder LSTM
+encoder_LSTM_forwards = LSTM(
+    go_backwards=False,
     output_dim=emb_size,
     return_sequences=True,
     consume_less='gpu',
-    name='encoder_LSTM'
+    name='encoder_LSTM_forwards'
 )(merged_parameters)
+
+encoder_LSTM_backwards = LSTM(
+    go_backwards=True,
+    output_dim=emb_size,
+    return_sequences=True,
+    consume_less='gpu',
+    name='encoder_LSTM_backwards'
+)(merged_parameters)
+
+encoder_LSTM_merged = merge(
+    [encoder_LSTM_forwards, encoder_LSTM_backwards],
+    mode='sum',
+    name='encoder_bidirectional_merge'
+)
 
 # Feedback input
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
-dec_in = merge([encoder_LSTM, feedback_in], mode='concat')
+dec_in = merge([encoder_LSTM_merged, feedback_in], mode='concat')
 
 decoder_LSTM = LSTM(
     emb_size,
