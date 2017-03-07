@@ -318,7 +318,7 @@ if pretrain:
     for epoch in range(start_epoch, nb_epochs):
         print('Epoch {} of {}'.format(epoch + 1, nb_epochs))
 
-        nb_batches = int(np.ceil(sampl_epoch / batch_size))
+        nb_batches = int(np.floor(sampl_epoch / batch_size))
         progress_bar = Progbar(target=nb_batches)
 
         epoch_train_partial_loss = []
