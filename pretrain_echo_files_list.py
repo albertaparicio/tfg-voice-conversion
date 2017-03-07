@@ -8,7 +8,7 @@ from os.path import join
 
 from h5py import File
 
-data_path = 'pretrain_data/test'
+data_path = 'pretrain_data/training_chop'
 params_file = 'pretrain_params.h5'
 
 with File(join(data_path, params_file), 'r') as file:

@@ -46,10 +46,10 @@ build_datatable = False
 #######################
 # Sizes and constants #
 #######################
-model_description = 'seq2seq_pretrain'
+model_description = 'seq2seq_pretrain_reverse-fix'
 
 # Batch shape
-batch_size = 12
+batch_size = 40
 output_dim = 44
 data_dim = output_dim + 10 + 10
 emb_size = 256
@@ -64,7 +64,7 @@ validation_fraction = 0.25
 # Load data #
 #############
 if pretrain:
-    data_path = 'pretrain_data/training'
+    data_path = 'pretrain_data/training_chop'
 
     if build_datatable:
         print('Saving pretraining parameters')
@@ -279,9 +279,9 @@ flags_loss = 'mse'
 
 # # Load weights from previous training
 # model.load_weights('models/' + model_description + '_' + params_loss +
-#                    '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-#                    str(start_epoch) + '_lr_' + str(learning_rate) +
-#                    '_weights.h5')
+                   # '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+                   # str(start_epoch) + '_lr_' + str(learning_rate) +
+                   # '_weights.h5')
 
 model.compile(
     optimizer=adam, sample_weight_mode="temporal",
@@ -303,11 +303,16 @@ if pretrain:
     val_samples = int(len(files_list) * validation_fraction)
     sampl_epoch = int(len(files_list) - val_samples)
 
-    batch_generator = pretrain_train_generator(data_path, batch_size=batch_size)
+    batch_generator = pretrain_train_generator(
+        data_path,
+        batch_size=batch_size,
+        basename_len=14
+    )
     val_generator = pretrain_train_generator(
         data_path,
         batch_size=batch_size,
-        validation=True
+        validation=True,
+        basename_len=14
     )
 
     for epoch in range(start_epoch, nb_epochs):

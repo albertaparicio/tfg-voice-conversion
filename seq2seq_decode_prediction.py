@@ -34,13 +34,13 @@ from tfglib.utils import reverse_encoder_output, reversed_output_shape
 pretrain = True
 
 # Decide if datatable/parameters must be built or can be loaded from a file
-build_datatable = True
+build_datatable = False
 
 #############
 # Load data #
 #############
 if pretrain:
-    data_path = 'pretrain_data/training_test'
+    data_path = 'pretrain_data/training_chop'
 
     if build_datatable:
         print('Saving pretraining parameters')
@@ -79,7 +79,7 @@ else:
 #############################
 # Load model and parameters #
 #############################
-model_description = 'seq2seq_pretrain'
+model_description = 'seq2seq_pretrain_reverse-fix'
 
 print('Loading parameters')
 with h5py.File('training_results/' + model_description + '_training_params.h5',
@@ -98,7 +98,7 @@ data_dim = output_dim + 10 + 10
 emb_size = 256
 batch_size = 1
 
-prediction_epoch = 19
+prediction_epoch = 3
 
 #################
 # Define models #
@@ -236,7 +236,8 @@ if pretrain:
         max_test_length,
         train_speakers_max,
         train_speakers_min,
-        shuffle_files=False
+        shuffle_files=False,
+        basename_len=14
     )
 
     # Initialize batch
