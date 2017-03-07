@@ -21,10 +21,10 @@ from ahoproc_tools import error_metrics
 from keras.layers import Embedding
 from keras.layers import Input, Dropout, Dense, merge, TimeDistributed
 from keras.layers.core import Lambda
+from keras.layers.recurrent import LSTM
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.utils.generic_utils import Progbar
-from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.pretrain_data_params import pretrain_load_data_parameters
 from tfglib.pretrain_data_params import pretrain_save_data_parameters
 from tfglib.pretrain_data_params import pretrain_train_generator
@@ -230,33 +230,33 @@ merged_parameters = merge(
     name='inputs_merge'
 )
 
-encoder_PLSTM = PLSTM(
+encoder_LSTM = LSTM(
     output_dim=emb_size,
     return_sequences=True,
     consume_less='gpu',
-    name='encoder_PLSTM'
+    name='encoder_LSTM'
 )(merged_parameters)
 
 reversed_encoder = Lambda(
     reverse_encoder_output,
     output_shape=reversed_output_shape,
     name='reversed_encoder'
-)(encoder_PLSTM)
+)(encoder_LSTM)
 
 # Feedback input
 feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
 dec_in = merge([reversed_encoder, feedback_in], mode='concat')
 
-decoder_PLSTM = PLSTM(
+decoder_LSTM = LSTM(
     emb_size,
     return_sequences=True,
     consume_less='gpu',
-    name='decoder_PLSTM'
+    name='decoder_LSTM'
 )(dec_in)
 
-dropout_layer = Dropout(0.5)(decoder_PLSTM)
+dropout_layer = Dropout(0.5)(decoder_LSTM)
 
-parameters_PLSTM = PLSTM(
+parameters_LSTM = LSTM(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
@@ -270,7 +270,7 @@ flags_Dense = TimeDistributed(Dense(
 ), name='flags_output')(dropout_layer)
 
 model = Model(input=[main_input, src_spk_input, trg_spk_input, feedback_in],
-              output=[parameters_PLSTM, flags_Dense])
+              output=[parameters_LSTM, flags_Dense])
 
 optimizer_name = 'adam'
 adam = Adam(clipnorm=5)
@@ -279,9 +279,9 @@ flags_loss = 'mse'
 
 # # Load weights from previous training
 # model.load_weights('models/' + model_description + '_' + params_loss +
-                   # '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-                   # str(start_epoch) + '_lr_' + str(learning_rate) +
-                   # '_weights.h5')
+# '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+# str(start_epoch) + '_lr_' + str(learning_rate) +
+# '_weights.h5')
 
 model.compile(
     optimizer=adam, sample_weight_mode="temporal",
