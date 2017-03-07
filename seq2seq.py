@@ -275,7 +275,7 @@ model = Model(input=[main_input, src_spk_input, trg_spk_input, feedback_in],
 optimizer_name = 'adam'
 adam = Adam(clipnorm=5)
 params_loss = 'mse'
-flags_loss = 'mse'
+flags_loss = 'binary_crossentropy'
 
 # # Load weights from previous training
 # model.load_weights('models/' + model_description + '_' + params_loss +
