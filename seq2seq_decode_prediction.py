@@ -18,15 +18,13 @@ import tfglib.seq2seq_normalize as s2s_norm
 from ahoproc_tools import error_metrics
 from keras.layers import Embedding
 from keras.layers import Input, TimeDistributed, Dense, merge, Dropout
-from keras.layers.core import Lambda
+from keras.layers.recurrent import LSTM
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.utils.generic_utils import Progbar
-from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
 from tfglib.pretrain_data_params import prepare_pretrain_slice
 from tfglib.pretrain_data_params import pretrain_load_data_parameters
 from tfglib.pretrain_data_params import pretrain_save_data_parameters
-from tfglib.utils import reverse_encoder_output, reversed_output_shape
 
 ############
 # Switches #
@@ -79,7 +77,7 @@ else:
 #############################
 # Load model and parameters #
 #############################
-model_description = 'seq2seq_pretrain_reverse-fix'
+model_description = 'seq2seq_pretrain_bidirectional'
 
 print('Loading parameters')
 with h5py.File('training_results/' + model_description + '_training_params.h5',
@@ -98,7 +96,7 @@ data_dim = output_dim + 10 + 10
 emb_size = 256
 batch_size = 1
 
-prediction_epoch = 3
+prediction_epoch = 19
 
 #################
 # Define models #
@@ -135,18 +133,28 @@ merged_parameters = merge(
     name='inputs_merge'
 )
 
-encoder_PLSTM = PLSTM(
+# Bidirectional encoder LSTM
+encoder_LSTM_forwards = LSTM(
+    go_backwards=False,
     output_dim=emb_size,
     return_sequences=True,
     consume_less='gpu',
-    name='encoder_PLSTM'
+    name='encoder_LSTM_forwards'
 )(merged_parameters)
 
-encoder_output = Lambda(
-    reverse_encoder_output,
-    output_shape=reversed_output_shape,
-    name='reversed_encoder'
-)(encoder_PLSTM)
+encoder_LSTM_backwards = LSTM(
+    go_backwards=True,
+    output_dim=emb_size,
+    return_sequences=True,
+    consume_less='gpu',
+    name='encoder_LSTM_backwards'
+)(merged_parameters)
+
+encoder_LSTM_merged = merge(
+    [encoder_LSTM_forwards, encoder_LSTM_backwards],
+    mode='sum',
+    name='encoder_bidirectional_merge'
+)
 
 # Decoder model
 # decoder_input = Input(batch_shape=(batch_size, max_test_length, emb_size),
@@ -160,17 +168,17 @@ dec_in = merge([decoder_input, feedback_input],
                name='decoder_merge'
                )
 
-decoder_PLSTM = PLSTM(
+decoder_LSTM = LSTM(
     emb_size,
     return_sequences=True,
     consume_less='gpu',
     stateful=True,
-    name='decoder_PLSTM'
+    name='decoder_LSTM'
 )(dec_in)
 
-dropout_layer = Dropout(0.5)(decoder_PLSTM)
+dropout_layer = Dropout(0.5)(decoder_LSTM)
 
-params_output = PLSTM(
+params_output = LSTM(
     output_dim - 2,
     return_sequences=True,
     consume_less='gpu',
@@ -188,7 +196,7 @@ flags_output = TimeDistributed(Dense(
 # Instantiate models #
 ######################
 encoder_model = Model(input=[main_input, src_spk_input, trg_spk_input],
-                      output=encoder_output)
+                      output=encoder_LSTM_merged)
 decoder_model = Model(input=[decoder_input, feedback_input],
                       output=[params_output, flags_output])
 
@@ -202,20 +210,10 @@ decoder_model.load_weights('models/' + model_description + '_' + params_loss +
                            str(prediction_epoch) + '_lr_' + str(learning_rate) +
                            '_weights.h5', by_name=True)
 
-# load_weights(encoder_model, 'models/' + model_description + '_' + params_loss+
-#              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-#              str(prediction_epoch) + '_lr_' + str(learning_rate) +
-#              '_weights.h5')
-#
-# load_weights(decoder_model, 'models/' + model_description + '_' + params_loss+
-#              '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-#              str(prediction_epoch) + '_lr_' + str(learning_rate) +
-#              '_weights.h5', offset=2)
-
 adam = Adam(clipnorm=5)
 
 encoder_model.compile(optimizer=adam,
-                      loss={'reversed_encoder': params_loss},
+                      loss={'encoder_bidirectional_merge': params_loss},
                       sample_weight_mode="temporal"
                       )
 
