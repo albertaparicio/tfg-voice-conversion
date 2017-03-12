@@ -47,7 +47,7 @@ load_weights = False
 #######################
 # Sizes and constants #
 #######################
-model_description = 'seq2seq_pretrain_bidirectional'
+model_description = 'seq2seq_pretrain_double_model'
 
 # Batch shape
 batch_size = 40
@@ -208,9 +208,6 @@ else:
 # Define Model #
 ################
 print('Initializing model\n' + '=' * 8 * 5)
-main_input = Input(shape=(max_train_length, output_dim),
-                   dtype='float32',
-                   name='main_input')
 
 src_spk_input = Input(
     shape=(max_train_length,),
@@ -230,8 +227,13 @@ embedded_spk_indexes = Embedding(
     name='spk_index_embedding'
 )
 
+# Parameters model
+parameters_input = Input(shape=(max_train_length, output_dim - 2),
+                         dtype='float32',
+                         name='main_input')
+
 merged_parameters = merge(
-    [main_input,
+    [parameters_input,
      embedded_spk_indexes(src_spk_input),
      embedded_spk_indexes(trg_spk_input)
      ],
@@ -240,7 +242,7 @@ merged_parameters = merge(
 )
 
 # Bidirectional encoder LSTM
-encoder_LSTM_forwards = LSTM(
+params_encoder_LSTM_forwards = LSTM(
     go_backwards=False,
     output_dim=emb_size,
     return_sequences=True,
@@ -248,7 +250,7 @@ encoder_LSTM_forwards = LSTM(
     name='encoder_LSTM_forwards'
 )(merged_parameters)
 
-encoder_LSTM_backwards = LSTM(
+params_encoder_LSTM_backwards = LSTM(
     go_backwards=True,
     output_dim=emb_size,
     return_sequences=True,
@@ -256,24 +258,26 @@ encoder_LSTM_backwards = LSTM(
     name='encoder_LSTM_backwards'
 )(merged_parameters)
 
-encoder_LSTM_merged = merge(
-    [encoder_LSTM_forwards, encoder_LSTM_backwards],
+params_encoder_LSTM_merged = merge(
+    [params_encoder_LSTM_forwards, params_encoder_LSTM_backwards],
     mode='sum',
     name='encoder_bidirectional_merge'
 )
 
 # Feedback input
-feedback_in = Input(shape=(max_train_length, output_dim), name='feedback_in')
-dec_in = merge([encoder_LSTM_merged, feedback_in], mode='concat')
+feedback_params_in = Input(shape=(max_train_length, output_dim - 2),
+                           name='feedback_in')
+dec_params_in = merge([params_encoder_LSTM_merged, feedback_params_in],
+                      mode='concat')
 
-decoder_LSTM = LSTM(
+decoder_params_LSTM = LSTM(
     emb_size,
     return_sequences=True,
     consume_less='gpu',
     name='decoder_LSTM'
-)(dec_in)
+)(dec_params_in)
 
-dropout_layer = Dropout(0.5)(decoder_LSTM)
+params_dropout_layer = Dropout(0.5)(decoder_params_LSTM)
 
 parameters_LSTM = LSTM(
     output_dim - 2,
@@ -281,31 +285,93 @@ parameters_LSTM = LSTM(
     consume_less='gpu',
     activation='linear',
     name='params_output'
-)(dropout_layer)
+)(params_dropout_layer)
+
+# Flags model
+flags_input = Input(shape=(max_train_length, 2),
+                    dtype='float32',
+                    name='main_input')
+
+merged_flags = merge(
+    [flags_input,
+     embedded_spk_indexes(src_spk_input),
+     embedded_spk_indexes(trg_spk_input)
+     ],
+    mode='concat',
+    name='inputs_merge'
+)
+
+# Bidirectional encoder LSTM
+flags_encoder_LSTM_forwards = LSTM(
+    go_backwards=False,
+    output_dim=emb_size,
+    return_sequences=True,
+    consume_less='gpu',
+    name='encoder_LSTM_forwards'
+)(merged_flags)
+
+flags_encoder_LSTM_backwards = LSTM(
+    go_backwards=True,
+    output_dim=emb_size,
+    return_sequences=True,
+    consume_less='gpu',
+    name='encoder_LSTM_backwards'
+)(merged_flags)
+
+flags_encoder_LSTM_merged = merge(
+    [flags_encoder_LSTM_forwards, flags_encoder_LSTM_backwards],
+    mode='sum',
+    name='encoder_bidirectional_merge'
+)
+
+# Feedback input
+feedback_flags_in = Input(shape=(max_train_length, 2),
+                          name='feedback_in')
+dec_flags_in = merge([flags_encoder_LSTM_merged, feedback_flags_in],
+                     mode='concat')
+
+decoder_flags_LSTM = LSTM(
+    emb_size,
+    return_sequences=True,
+    consume_less='gpu',
+    name='decoder_LSTM'
+)(dec_flags_in)
+
+dropout_flags_layer = Dropout(0.5)(decoder_flags_LSTM)
 
 flags_Dense = TimeDistributed(Dense(
     2,
     activation='sigmoid',
-), name='flags_output')(dropout_layer)
+), name='flags_output')(dropout_flags_layer)
 
-model = Model(input=[main_input, src_spk_input, trg_spk_input, feedback_in],
-              output=[parameters_LSTM, flags_Dense])
+params_model = Model(
+    input=[parameters_input, src_spk_input, trg_spk_input, feedback_params_in],
+    output=[parameters_LSTM])
+
+flags_model = Model(
+    input=[flags_input, src_spk_input, trg_spk_input, feedback_flags_in],
+    output=[flags_Dense])
 
 optimizer_name = 'adam'
 adam = Adam(clipnorm=5)
 params_loss = 'mse'
 flags_loss = 'binary_crossentropy'
 
-if load_weights:
-    # Load weights from previous training
-    model.load_weights('models/' + model_description + '_' + params_loss +
-                       '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
-                       str(start_epoch) + '_lr_' + str(learning_rate) +
-                       '_weights.h5')
+# if load_weights:
+#     # Load weights from previous training
+#     model.load_weights('models/' + model_description + '_' + params_loss +
+#                        '_' + flags_loss + '_' + optimizer_name + '_epoch_' +
+#                        str(start_epoch) + '_lr_' + str(learning_rate) +
+#                        '_weights.h5')
 
-model.compile(
+params_model.compile(
     optimizer=adam, sample_weight_mode="temporal",
-    loss={'params_output': params_loss, 'flags_output': flags_loss}
+    loss={'params_output': params_loss}
+)
+
+flags_model.compile(
+    optimizer=adam, sample_weight_mode="temporal",
+    loss={'flags_output': flags_loss}
 )
 
 ###############
@@ -314,10 +380,13 @@ model.compile(
 if pretrain:
     print('Pretraining' + '\n' + '-----------')
 
-    training_history = []
-    validation_history = []
+    params_training_history = []
+    params_validation_history = []
     val_mcd = []
     val_pitch_rmse = []
+
+    flags_training_history = []
+    flags_validation_history = []
     val_uv_accuracy = []
 
     val_samples = int(len(files_list) * validation_fraction)
@@ -341,7 +410,8 @@ if pretrain:
         nb_batches = int(np.floor(sampl_epoch / batch_size))
         progress_bar = Progbar(target=nb_batches)
 
-        epoch_train_partial_loss = []
+        params_epoch_train_partial_loss = []
+        flags_epoch_train_partial_loss = []
 
         try:
             progress_bar.update(0)
@@ -350,11 +420,27 @@ if pretrain:
 
         for index in range(nb_batches):
             train_in, train_out, train_mask = next(batch_generator)
-            epoch_train_partial_loss.append(
-                model.train_on_batch(
-                    train_in,
-                    train_out,
-                    sample_weight=train_mask
+
+            # TODO Separate generator data in params and flags
+            params_epoch_train_partial_loss.append(
+                params_model.train_on_batch(
+                    {'main_input': train_in['main_input'][:, :, 0:42],
+                     'src_spk_in': train_in['src_spk_in'],
+                     'trg_spk_in': train_in['trg_spk_in'],
+                     'feedback_in': train_in['feedback_in'][:, :, 0:42]},
+                    {'params_output': train_out['params_output']},
+                    sample_weight=train_mask['sample_weights'][:, :, 0]
+                )
+            )
+
+            flags_epoch_train_partial_loss.append(
+                flags_model.train_on_batch(
+                    {'main_input': train_in['main_input'][:, :, 42:44],
+                     'src_spk_in': train_in['src_spk_in'],
+                     'trg_spk_in': train_in['trg_spk_in'],
+                     'feedback_in': train_in['feedback_in'][:, :, 42:44]},
+                    {'flags_output': train_out['flags_output']},
+                    sample_weight=train_mask['sample_weights'][:, :, 0]
                 )
             )
 
@@ -363,23 +449,54 @@ if pretrain:
         # Obtain validation losses and metrics
         (val_input, val_target, val_mask) = next(val_generator)
 
-        epoch_val_loss = model.evaluate(
-            val_input,
-            val_target,
-            sample_weight=val_mask,
+        params_epoch_val_loss = params_model.evaluate(
+            {'main_input': val_input['main_input'][:, :, 0:42],
+             'src_spk_in': val_input['src_spk_in'],
+             'trg_spk_in': val_input['trg_spk_in'],
+             'feedback_in': val_input['feedback_in'][:, :, 0:42]},
+            {'params_output': val_target['params_output']},
+            sample_weight=val_mask['sample_weights'][:, :, 0],
+            batch_size=batch_size
+        )
+
+        flags_epoch_val_loss = flags_model.evaluate(
+            {'main_input': val_input['main_input'][:, :, 42:44],
+             'src_spk_in': val_input['src_spk_in'],
+             'trg_spk_in': val_input['trg_spk_in'],
+             'feedback_in': val_input['feedback_in'][:, :, 42:44]},
+            {'flags_output': val_target['flags_output']},
+            sample_weight=val_mask['sample_weights'][:, :, 0],
             batch_size=batch_size
         )
 
         # Mask data
-        val_pred = model.predict_on_batch(val_input)
+        params_val_pred = params_model.predict_on_batch({'main_input': val_input['main_input'][:, :, 0:42],
+             'src_spk_in': val_input['src_spk_in'],
+             'trg_spk_in': val_input['trg_spk_in'],
+             'feedback_in': val_input['feedback_in'][:, :, 0:42]})
+        flags_val_pred = flags_model.predict_on_batch({'main_input': val_input['main_input'][:, :, 42:44],
+             'src_spk_in': val_input['src_spk_in'],
+             'trg_spk_in': val_input['trg_spk_in'],
+             'feedback_in': val_input['feedback_in'][:, :, 42:44]})
 
-        for sequence in range(len(val_pred)):
-            val_pred[sequence] = np.ma.array(
-                val_pred[sequence],
+        assert len(params_val_pred) == len(flags_val_pred)
+
+        for sequence in range(len(params_val_pred)):
+            params_val_pred[sequence] = np.ma.array(
+                params_val_pred[sequence],
                 mask=np.logical_not(np.repeat(
-                    val_mask['sample_weights'],
-                    val_pred[sequence].shape[2],
-                    axis=2
+                    val_mask['sample_weights'][sequence],
+                    params_val_pred[sequence].shape[1],
+                    axis=1
+                ))
+            )
+
+            flags_val_pred[sequence] = np.ma.array(
+                flags_val_pred[sequence],
+                mask=np.logical_not(np.repeat(
+                    val_mask['sample_weights'][sequence],
+                    flags_val_pred[sequence].shape[1],
+                    axis=1
                 ))
             )
 
@@ -402,40 +519,46 @@ if pretrain:
         val_mcd.append(error_metrics.MCD(
             np.ma.compress_rows(
                 val_target['params_output'][:, :, 0:40].reshape((-1, 40))),
-            np.ma.compress_rows(val_pred[0][:, :, 0:40].reshape((-1, 40)))
+            np.ma.compress_rows(params_val_pred[:, :, 0:40].reshape((-1, 40)))
         ))
 
-        val_pitch_rmse.append(error_metrics.RMSE(
-            np.ma.compress_rows(
-                val_target['params_output'][:, :, 40].reshape((-1, 1))),
-            np.ma.compress_rows(val_pred[0][:, :, 40].reshape((-1, 1)))
-        )[0])
+        # val_pitch_rmse.append(error_metrics.RMSE(
+        #     np.ma.compress_rows(
+        #         val_target['params_output'][:, :, 40].reshape((-1, 1))),
+        #     np.ma.compress_rows(params_val_pred[:, :, 40].reshape((-1, 1)))
+        # )[0])
 
-        uv_accuracy, _, _, _ = error_metrics.AFPR(
-            np.ma.compress_rows(
-                np.round(val_target['flags_output'][:, :, 0]).reshape((-1, 1))),
-            np.ma.compress_rows(np.round(val_pred[1][:, :, 0]).reshape((-1, 1)))
-        )
-        val_uv_accuracy.append(uv_accuracy)
+        # uv_accuracy, _, _, _ = error_metrics.AFPR(
+        #     np.ma.compress_rows(
+        #         np.round(val_target['flags_output'][:, :, 0]).reshape((-1, 1))),
+        #     np.ma.compress_rows(np.round(flags_val_pred[:, :, 0]).reshape((-1, 1)))
+        # )
+        # val_uv_accuracy.append(uv_accuracy)
 
-        epoch_train_loss = np.mean(np.array(epoch_train_partial_loss), axis=0)
+        params_epoch_train_loss = np.mean(np.array(params_epoch_train_partial_loss), axis=0)
+        flags_epoch_train_loss = np.mean(np.array(flags_epoch_train_partial_loss), axis=0)
 
-        training_history.append(epoch_train_loss)
-        validation_history.append(epoch_val_loss)
+        params_training_history.append(params_epoch_train_loss)
+        params_validation_history.append(params_epoch_val_loss)
+
+        flags_training_history.append(flags_epoch_train_loss)
+        flags_validation_history.append(flags_epoch_val_loss)
 
         # Generate epoch report
-        print('loss: ' + str(training_history[-1]) +
-              ' - val_loss: ' + str(validation_history[-1]) + '\n')
+        print('PARAMETERS - loss: ' + str(params_training_history[-1]) +
+              ' - val_loss: ' + str(params_validation_history[-1]) + '\n')
+        print('FLAGS - loss: ' + str(flags_training_history[-1]) +
+              ' - val_loss: ' + str(flags_validation_history[-1]) + '\n')
         print('Cepstrum MCD: ' + str(val_mcd[-1]) + ' dB')
-        print('Pitch RMSE: ' + str(val_pitch_rmse[-1]))
-        print('U/V accuracy: ' + str(val_uv_accuracy[-1]))
+        # print('Pitch RMSE: ' + str(val_pitch_rmse[-1]))
+        # print('U/V accuracy: ' + str(val_uv_accuracy[-1]))
 
         ###########################
         # Save model after each epoch #
         ###########################
         print('Saving model\n' + '=' * 8 * 5)
 
-        model.save_weights(
+        params_model.save_weights(
             'models/' + model_description + '_' + params_loss + '_' +
             flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
             '_lr_' + str(learning_rate) + '_weights.h5')
@@ -444,7 +567,18 @@ if pretrain:
                   flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
                   '_lr_' + str(learning_rate) + '_model.json', 'w'
                   ) as model_json:
-            model_json.write(model.to_json())
+            model_json.write(params_model.to_json())
+
+        flags_model.save_weights(
+            'models/' + model_description + '_' + params_loss + '_' +
+            flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
+            '_lr_' + str(learning_rate) + '_weights.h5')
+
+        with open('models/' + model_description + '_' + params_loss + '_' +
+                  flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
+                  '_lr_' + str(learning_rate) + '_model.json', 'w'
+                  ) as model_json:
+            model_json.write(flags_model.to_json())
 
     # Save metrics
     np.savetxt(
@@ -544,8 +678,9 @@ else:
             '_lr_' + str(learning_rate) + '_weights.h5')
 
         with open('models/' + model_description + '_' + params_loss + '_' +
-                  flags_loss + '_' + optimizer_name + '_epoch_' + str(epoch) +
-                  '_lr_' + str(learning_rate) + '_model.json', 'w'
+                          flags_loss + '_' + optimizer_name + '_epoch_' + str(
+            epoch) +
+                          '_lr_' + str(learning_rate) + '_model.json', 'w'
                   ) as model_json:
             model_json.write(model.to_json())
 
@@ -559,9 +694,10 @@ with h5py.File('training_results/' + model_description +
     f.attrs.create('learning_rate', learning_rate)
     f.attrs.create('train_speakers_max', train_speakers_max)
     f.attrs.create('train_speakers_min', train_speakers_min)
-    f.attrs.create('metrics_names',
-                   [np.string_(name) for name in model.metrics_names]
-                   )
+    f.attrs.create('params_metrics_names',
+                   [np.string_(name) for name in params_model.metrics_names])
+    f.attrs.create('flags_metrics_names',
+                   [np.string_(name) for name in flags_model.metrics_names])
 
 print('Saving training results')
 np.savetxt(
@@ -574,12 +710,28 @@ np.savetxt(
 np.savetxt(
     'training_results/' + model_description + '_' + params_loss + '_' +
     flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-    str(learning_rate) + '_loss.csv', training_history, delimiter=','
+    str(learning_rate) + '_params_loss.csv', params_training_history,
+    delimiter=','
 )
 np.savetxt(
     'training_results/' + model_description + '_' + params_loss + '_' +
     flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
-    str(learning_rate) + '_val_loss.csv', validation_history, delimiter=','
+    str(learning_rate) + '_flags_loss.csv', flags_training_history,
+    delimiter=','
+)
+
+np.savetxt(
+    'training_results/' + model_description + '_' + params_loss + '_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_params_val_loss.csv', params_validation_history,
+    delimiter=','
+)
+
+np.savetxt(
+    'training_results/' + model_description + '_' + params_loss + '_' +
+    flags_loss + '_' + optimizer_name + '_epochs_' + str(nb_epochs) + '_lr_' +
+    str(learning_rate) + '_flags_val_loss.csv', flags_validation_history,
+    delimiter=','
 )
 
 print('========================' + '\n' +
