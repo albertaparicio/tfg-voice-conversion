@@ -244,7 +244,7 @@ if pretrain:
     trg_spk_in = np.empty((batch_size, max_test_length))
 
     for sequence in test_files_list:
-        print('Processing ' + sequence)
+        print('\n' + 'Processing ' + sequence)
 
         # Get sequence parameters (only input parameters 'cos we have test data)
         (
@@ -285,8 +285,8 @@ if pretrain:
         progress_bar.update(0)
 
         # TODO Fix EOS prediction
-        # while loop_timesteps < max_test_length:
-        while EOS < 0.5 and loop_timesteps < max_test_length:
+        while loop_timesteps < max_test_length:
+            # while EOS < 0.5 or loop_timesteps < max_test_length:
 
             # Predict each frame separately
             # for index in range(encoder_prediction.shape[1]):
@@ -321,7 +321,13 @@ if pretrain:
                 (decoder_prediction, partial_prediction), axis=1)
 
             # feedback_data = partial_prediction
-            feedback_data = main_input[0, loop_timesteps, :].reshape(1, 1, 44)
+            # feedback_data = main_input[0, loop_timesteps, :].reshape(1, 1, 44)
+            # feedback_data = np.concatenate((
+                # partial_prediction[:, :, 0:42],
+                # main_input[0, loop_timesteps, 42:44].reshape(1, 1, 2)), axis=2)
+            feedback_data = np.concatenate((
+                main_input[0, loop_timesteps, 0:42].reshape(1, 1, 42),
+                partial_prediction[:, :, 42:44]), axis=2)
 
             EOS = decoder_prediction[:, loop_timesteps, 43]
             loop_timesteps += 1
@@ -339,7 +345,7 @@ if pretrain:
         # Create destination directory before saving data
         predicted_path = 'predicted_' + sequence
 
-        bashCommand = ('mkdir -p ' + predicted_path[:-11])
+        bashCommand = ('mkdir -p ' + predicted_path[:-14])
         process = subprocess.Popen(
             bashCommand.split(),
             stdout=subprocess.PIPE
@@ -364,14 +370,14 @@ if pretrain:
             raw_uv_flags
         )
 
-        # Display MCD
-        print('\n'+'MCD = ' + str(error_metrics.MCD(
-                  main_input[0, :, 0:40] *
-                  (train_speakers_max[int(src_spk_in[0, 0]), 0:40] -
-                   train_speakers_min[int(src_spk_in[0, 0]), 0:40]
-                   ) + (train_speakers_min[int(src_spk_in[0, 0]), 0:40]),
-                  decoder_prediction[:, 0:40]
-              )))
+        # # Display MCD
+        # print('\n'+'MCD = ' + str(error_metrics.MCD(
+                  # main_input[0, :, 0:40] *
+                  # (train_speakers_max[int(src_spk_in[0, 0]), 0:40] -
+                   # train_speakers_min[int(src_spk_in[0, 0]), 0:40]
+                   # ) + (train_speakers_min[int(src_spk_in[0, 0]), 0:40]),
+                  # decoder_prediction[:, 0:40]
+              # )))
 
 else:
     basenames_file = open('data/test/seq2seq_basenames.list', 'r')
