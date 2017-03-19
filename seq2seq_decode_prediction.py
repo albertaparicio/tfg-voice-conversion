@@ -77,7 +77,7 @@ else:
 #############################
 # Load model and parameters #
 #############################
-model_description = 'seq2seq_pretrain_bidirectional_1024'
+model_description = 'seq2seq_pretrain_no-frame-noise'
 
 print('Loading parameters')
 with h5py.File('training_results/' + model_description + '_training_params.h5',
@@ -93,10 +93,10 @@ with h5py.File('training_results/' + model_description + '_training_params.h5',
 print('Re-initializing model')
 output_dim = 44
 data_dim = output_dim + 10 + 10
-emb_size = 1024
+emb_size = 256
 batch_size = 1
 
-prediction_epoch = 3
+prediction_epoch = 18
 
 #################
 # Define models #
@@ -235,7 +235,8 @@ if pretrain:
         train_speakers_max,
         train_speakers_min,
         shuffle_files=False,
-        basename_len=14
+        basename_len=14,
+        replicate=False
     )
 
     # Initialize batch
