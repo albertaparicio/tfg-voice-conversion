@@ -77,7 +77,7 @@ else:
 #############################
 # Load model and parameters #
 #############################
-model_description = 'seq2seq_pretrain_bidirectional'
+model_description = 'seq2seq_pretrain_bidirectional_1024'
 
 print('Loading parameters')
 with h5py.File('training_results/' + model_description + '_training_params.h5',
@@ -93,10 +93,10 @@ with h5py.File('training_results/' + model_description + '_training_params.h5',
 print('Re-initializing model')
 output_dim = 44
 data_dim = output_dim + 10 + 10
-emb_size = 256
+emb_size = 1024
 batch_size = 1
 
-prediction_epoch = 19
+prediction_epoch = 3
 
 #################
 # Define models #
@@ -321,13 +321,13 @@ if pretrain:
                 (decoder_prediction, partial_prediction), axis=1)
 
             # feedback_data = partial_prediction
-            # feedback_data = main_input[0, loop_timesteps, :].reshape(1, 1, 44)
+            feedback_data = main_input[0, loop_timesteps, :].reshape(1, 1, 44)
             # feedback_data = np.concatenate((
                 # partial_prediction[:, :, 0:42],
                 # main_input[0, loop_timesteps, 42:44].reshape(1, 1, 2)), axis=2)
-            feedback_data = np.concatenate((
-                main_input[0, loop_timesteps, 0:42].reshape(1, 1, 42),
-                partial_prediction[:, :, 42:44]), axis=2)
+            # feedback_data = np.concatenate((
+                # main_input[0, loop_timesteps, 0:42].reshape(1, 1, 42),
+                # partial_prediction[:, :, 42:44]), axis=2)
 
             EOS = decoder_prediction[:, loop_timesteps, 43]
             loop_timesteps += 1
