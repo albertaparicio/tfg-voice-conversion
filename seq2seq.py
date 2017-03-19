@@ -47,13 +47,13 @@ load_weights = False
 #######################
 # Sizes and constants #
 #######################
-model_description = 'seq2seq_pretrain_bidirectional_1024'
+model_description = 'seq2seq_pretrain_no-frame-noise'
 
 # Batch shape
 batch_size = 115
 output_dim = 44
 data_dim = output_dim + 10 + 10
-emb_size = 1024
+emb_size = 256
 
 # Other constants
 nb_epochs = 20
@@ -326,13 +326,15 @@ if pretrain:
     batch_generator = pretrain_train_generator(
         data_path,
         batch_size=batch_size,
-        basename_len=14
+        basename_len=14,
+        replicate=False
     )
     val_generator = pretrain_train_generator(
         data_path,
         batch_size=batch_size,
         validation=True,
-        basename_len=14
+        basename_len=14,
+        replicate=False
     )
 
     for epoch in range(start_epoch, nb_epochs):
@@ -398,29 +400,29 @@ if pretrain:
                 ))
             )
 
-        # # Compute validation metrics
-        # val_mcd.append(error_metrics.MCD(
-            # np.ma.compress_rows(
-                # val_target['params_output'][:, :, 0:40].reshape((-1, 40))),
-            # np.ma.compress_rows(val_pred[0][:, :, 0:40].reshape((-1, 40)))
-        # ))
+        # Compute validation metrics
+        val_mcd.append(error_metrics.MCD(
+            np.ma.compress_rows(
+                val_target['params_output'][:, :, 0:40].reshape((-1, 40))),
+            np.ma.compress_rows(val_pred[0][:, :, 0:40].reshape((-1, 40)))
+        ))
 
-        # val_pitch_rmse.append(error_metrics.RMSE(
-            # np.ma.compress_rows(
-                # val_target['params_output'][:, :, 40].reshape((-1, 1))),
-            # np.ma.compress_rows(val_pred[0][:, :, 40].reshape((-1, 1)))
-        # )[0])
+        val_pitch_rmse.append(error_metrics.RMSE(
+            np.ma.compress_rows(
+                val_target['params_output'][:, :, 40].reshape((-1, 1))),
+            np.ma.compress_rows(val_pred[0][:, :, 40].reshape((-1, 1)))
+        )[0])
 
-        # print(np.ma.compress_rows(
-                # np.round(val_target['flags_output'][:, :, 0]).reshape((-1, 1))))
-        # print(np.ma.compress_rows(np.round(val_pred[1][:, :, 0]).reshape((-1, 1))))
+        print(np.ma.compress_rows(
+                np.round(val_target['flags_output'][:, :, 0]).reshape((-1, 1))))
+        print(np.ma.compress_rows(np.round(val_pred[1][:, :, 0]).reshape((-1, 1))))
 
-        # uv_accuracy, _, _, _ = error_metrics.AFPR(
-            # np.ma.compress_rows(
-                # np.round(val_target['flags_output'][:, :, 0]).reshape((-1, 1))),
-            # np.ma.compress_rows(np.round(val_pred[1][:, :, 0]).reshape((-1, 1)))
-        # )
-        # val_uv_accuracy.append(uv_accuracy)
+        uv_accuracy, _, _, _ = error_metrics.AFPR(
+            np.ma.compress_rows(
+                np.round(val_target['flags_output'][:, :, 0]).reshape((-1, 1))),
+            np.ma.compress_rows(np.round(val_pred[1][:, :, 0]).reshape((-1, 1)))
+        )
+        val_uv_accuracy.append(uv_accuracy)
 
         epoch_train_loss = np.mean(np.array(epoch_train_partial_loss), axis=0)
 
@@ -430,9 +432,9 @@ if pretrain:
         # Generate epoch report
         print('loss: ' + str(training_history[-1]) +
               ' - val_loss: ' + str(validation_history[-1]) + '\n')
-        # print('Cepstrum MCD: ' + str(val_mcd[-1]) + ' dB')
-        # print('Pitch RMSE: ' + str(val_pitch_rmse[-1]))
-        # print('U/V accuracy: ' + str(val_uv_accuracy[-1]))
+        print('Cepstrum MCD: ' + str(val_mcd[-1]) + ' dB')
+        print('Pitch RMSE: ' + str(val_pitch_rmse[-1]))
+        print('U/V accuracy: ' + str(val_uv_accuracy[-1]))
 
         ###########################
         # Save model after each epoch #
