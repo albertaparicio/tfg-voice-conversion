@@ -22,8 +22,8 @@ from __future__ import print_function
 import random
 
 import numpy as np
-from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+from six.moves import xrange  # pylint: disable=redefined-builtin
 
 import data_utils
 
@@ -85,17 +85,19 @@ class Seq2SeqModel(object):
     self.buckets = buckets
     self.batch_size = batch_size
     self.learning_rate = tf.Variable(
-        float(learning_rate), trainable=False, dtype=dtype)
+      float(learning_rate), trainable=False, dtype=dtype)
     self.learning_rate_decay_op = self.learning_rate.assign(
-        self.learning_rate * learning_rate_decay_factor)
+      self.learning_rate * learning_rate_decay_factor)
     self.global_step = tf.Variable(0, trainable=False)
 
     # If we use sampled softmax, we need an output projection.
     output_projection = None
     softmax_loss_function = None
     # Sampled softmax only makes sense if we sample less than vocabulary size.
-    if num_samples > 0 and num_samples < self.target_vocab_size:
-      w_t = tf.get_variable("proj_w", [self.target_vocab_size, size], dtype=dtype)
+    # if num_samples > 0 and num_samples < self.target_vocab_size:
+    if 0 < num_samples < self.target_vocab_size:
+      w_t = tf.get_variable("proj_w", [self.target_vocab_size, size],
+                            dtype=dtype)
       w = tf.transpose(w_t)
       b = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
       output_projection = (w, b)
@@ -108,38 +110,42 @@ class Seq2SeqModel(object):
         local_b = tf.cast(b, tf.float32)
         local_inputs = tf.cast(inputs, tf.float32)
         return tf.cast(
-            tf.nn.sampled_softmax_loss(
-                weights=local_w_t,
-                biases=local_b,
-                labels=labels,
-                inputs=local_inputs,
-                num_sampled=num_samples,
-                num_classes=self.target_vocab_size),
-            dtype)
+          tf.nn.sampled_softmax_loss(
+            weights=local_w_t,
+            biases=local_b,
+            labels=labels,
+            inputs=local_inputs,
+            num_sampled=num_samples,
+            num_classes=self.target_vocab_size),
+          dtype)
+
       softmax_loss_function = sampled_loss
 
     # Create the internal multi-layer cell for our RNN.
     def single_cell():
       return tf.contrib.rnn.GRUCell(size)
+
     if use_lstm:
       def single_cell():
         return tf.contrib.rnn.BasicLSTMCell(size)
     cell = single_cell()
     if num_layers > 1:
-      cell = tf.contrib.rnn.MultiRNNCell([single_cell() for _ in range(num_layers)])
+      cell = tf.contrib.rnn.MultiRNNCell(
+        [single_cell() for _ in range(num_layers)])
 
     # The seq2seq function: we use embedding for the input and attention.
     def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):
-      return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
-          encoder_inputs,
-          decoder_inputs,
-          cell,
-          num_encoder_symbols=source_vocab_size,
-          num_decoder_symbols=target_vocab_size,
-          embedding_size=size,
-          output_projection=output_projection,
-          feed_previous=do_decode,
-          dtype=dtype)
+      # return tf.contrib.legacy_seq2seq.embedding_attention_seq2seq(
+      return tf.contrib.legacy_seq2seq.python.ops.seq2seq.basic_rnn_seq2seq(
+        encoder_inputs,
+        decoder_inputs,
+        cell,
+        num_encoder_symbols=source_vocab_size,
+        num_decoder_symbols=target_vocab_size,
+        embedding_size=size,
+        output_projection=output_projection,
+        feed_previous=do_decode,
+        dtype=dtype)
 
     # Feeds for inputs.
     self.encoder_inputs = []
@@ -161,22 +167,22 @@ class Seq2SeqModel(object):
     # Training outputs and losses.
     if forward_only:
       self.outputs, self.losses = tf.contrib.legacy_seq2seq.model_with_buckets(
-          self.encoder_inputs, self.decoder_inputs, targets,
-          self.target_weights, buckets, lambda x, y: seq2seq_f(x, y, True),
-          softmax_loss_function=softmax_loss_function)
+        self.encoder_inputs, self.decoder_inputs, targets,
+        self.target_weights, buckets, lambda x, y: seq2seq_f(x, y, True),
+        softmax_loss_function=softmax_loss_function)
       # If we use output projection, we need to project outputs for decoding.
       if output_projection is not None:
         for b in xrange(len(buckets)):
           self.outputs[b] = [
-              tf.matmul(output, output_projection[0]) + output_projection[1]
-              for output in self.outputs[b]
-          ]
+            tf.matmul(output, output_projection[0]) + output_projection[1]
+            for output in self.outputs[b]
+            ]
     else:
       self.outputs, self.losses = tf.contrib.legacy_seq2seq.model_with_buckets(
-          self.encoder_inputs, self.decoder_inputs, targets,
-          self.target_weights, buckets,
-          lambda x, y: seq2seq_f(x, y, False),
-          softmax_loss_function=softmax_loss_function)
+        self.encoder_inputs, self.decoder_inputs, targets,
+        self.target_weights, buckets,
+        lambda x, y: seq2seq_f(x, y, False),
+        softmax_loss_function=softmax_loss_function)
 
     # Gradients and SGD update operation for training the model.
     params = tf.trainable_variables()
@@ -190,7 +196,7 @@ class Seq2SeqModel(object):
                                                          max_gradient_norm)
         self.gradient_norms.append(norm)
         self.updates.append(opt.apply_gradients(
-            zip(clipped_gradients, params), global_step=self.global_step))
+          zip(clipped_gradients, params), global_step=self.global_step))
 
     self.saver = tf.train.Saver(tf.global_variables())
 
@@ -293,14 +299,14 @@ class Seq2SeqModel(object):
     # Batch encoder inputs are just re-indexed encoder_inputs.
     for length_idx in xrange(encoder_size):
       batch_encoder_inputs.append(
-          np.array([encoder_inputs[batch_idx][length_idx]
-                    for batch_idx in xrange(self.batch_size)], dtype=np.int32))
+        np.array([encoder_inputs[batch_idx][length_idx]
+                  for batch_idx in xrange(self.batch_size)], dtype=np.int32))
 
     # Batch decoder inputs are re-indexed decoder_inputs, we create weights.
     for length_idx in xrange(decoder_size):
       batch_decoder_inputs.append(
-          np.array([decoder_inputs[batch_idx][length_idx]
-                    for batch_idx in xrange(self.batch_size)], dtype=np.int32))
+        np.array([decoder_inputs[batch_idx][length_idx]
+                  for batch_idx in xrange(self.batch_size)], dtype=np.int32))
 
       # Create target_weights to be 0 for targets that are padding.
       batch_weight = np.ones(self.batch_size, dtype=np.float32)
