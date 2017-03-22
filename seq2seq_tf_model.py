@@ -155,9 +155,9 @@ class Seq2SeqModel(object):
       self.encoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
                                                 name="encoder{0}".format(i)))
     for i in xrange(buckets[-1][1] + 1):
-      self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
+      self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None, 2],
                                                 name="decoder{0}".format(i)))
-      self.target_weights.append(tf.placeholder(dtype, shape=[None],
+      self.target_weights.append(tf.placeholder(dtype, shape=[None, 2],
                                                 name="weight{0}".format(i)))
 
     # Our targets are decoder inputs shifted by one.
@@ -281,7 +281,7 @@ class Seq2SeqModel(object):
 
     # Get a random batch of encoder and decoder inputs from data,
     # pad them if needed, reverse encoder inputs and add GO to decoder.
-    for _ in xrange(self.batch_size):
+    for i in xrange(self.batch_size):
       encoder_input, decoder_input = random.choice(data[bucket_id])
 
       # Encoder inputs are padded and then reversed.
@@ -289,9 +289,14 @@ class Seq2SeqModel(object):
       encoder_inputs.append(list(reversed(encoder_input + encoder_pad)))
 
       # Decoder inputs get an extra "GO" symbol, and are padded then.
-      decoder_pad_size = decoder_size - len(decoder_input) - 1
-      decoder_inputs.append([data_utils.GO_ID] + decoder_input +
-                            [data_utils.PAD_ID] * decoder_pad_size)
+      decoder_pad_size = decoder_size - len(decoder_input)
+      # decoder_inputs.append([data_utils.GO_ID] + decoder_input +
+      decoder_inputs.append(
+        [[data_utils.GO_ID] + [in_val] for in_val in decoder_input] +
+        [[data_utils.PAD_ID] * 2] * decoder_pad_size)
+
+      # Set last decoder input's flag to EOS
+      decoder_inputs[i][len(decoder_input)-1][0] = data_utils.EOS_ID
 
     # Now we create batch-major vectors from the data selected above.
     batch_encoder_inputs, batch_decoder_inputs, batch_weights = [], [], []
