@@ -110,7 +110,8 @@ def read_data(source_path, target_path, max_size=None):
           sys.stdout.flush()
         source_ids = [int(x) for x in source.split()]
         target_ids = [int(x) for x in target.split()]
-        target_ids.append(data_utils.EOS_ID)
+        # The EOS flag will be added when a batch is prepared
+        # target_ids.append(data_utils.EOS_ID)
         for bucket_id, (source_size, target_size) in enumerate(_buckets):
           if len(source_ids) < source_size and len(target_ids) < target_size:
             data_set[bucket_id].append([source_ids, target_ids])
