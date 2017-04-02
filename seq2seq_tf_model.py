@@ -13,8 +13,7 @@ import logging
 
 import tensorflow as tf
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 
 class Seq2Seq(object):
@@ -118,7 +117,7 @@ class Seq2Seq(object):
                                          sequence_length=self.seq_length)
     # this op is created to visualize the thought vectors
     self.enc_state = enc_state
-    logger.info('enc out tensor shape: ' + enc_out.get_shape())
+    logging.info('enc out tensor shape: ' + enc_out.get_shape())
     # print('enc out tensor shape: ', enc_out.get_shape())
 
     dec_cell = Seq2Seq.build_multirnn_block(self.rnn_size,
@@ -126,7 +125,7 @@ class Seq2Seq(object):
                                             self.cell_type)
     if self.dropout > 0:
       # print('Applying dropout {} to decoder'.format(self.dropout))
-      logger.info('Applying dropout {} to decoder'.format(self.dropout))
+      logging.info('Applying dropout {} to decoder'.format(self.dropout))
       dec_cell = tf.contrib.rnn.DropoutWrapper(dec_cell,
                                                input_keep_prob=self.keep_prob)
 
@@ -147,6 +146,6 @@ class Seq2Seq(object):
     # merge outputs into a tensor and transpose to be [B, seq_length, out_dim]
     dec_outputs = tf.transpose(tf.stack(dec_out), [1, 0, 2])
     # print('dec outputs shape: ', dec_outputs.get_shape())
-    logger.info('dec outputs shape: ', dec_outputs.get_shape())
+    logging.info('dec outputs shape: ', dec_outputs.get_shape())
 
     return dec_outputs

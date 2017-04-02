@@ -108,13 +108,15 @@ tensor_dec = [tf.placeholder(
 
 # print('logging')
 import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+
+# logger = logging.getLogger()
+# logger.setLevel(logging.INFO)
 logging.info("test")
 # logger = logging.getLogger()
 # logger.setLevel(logging.INFO)
-logger.info('printing shape of tensor_enc')
-logger.info(tensor_enc[0].get_shape())
+logging.info('printing shape of tensor_enc')
+logging.info(tensor_enc[0].get_shape())
 # print(tensor_enc[0].get_shape())
 # print('logging')
 
