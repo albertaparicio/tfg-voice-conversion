@@ -106,6 +106,18 @@ tensor_enc = [tf.placeholder(
 tensor_dec = [tf.placeholder(
   dtype=tf.float32,shape=(timesteps, 3)) for _ in xrange(batch_size)]
 
+# print('logging')
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logging.info("test")
+# logger = logging.getLogger()
+# logger.setLevel(logging.INFO)
+logger.info('printing shape of tensor_enc')
+logger.info(tensor_enc[0].get_shape())
+# print(tensor_enc[0].get_shape())
+# print('logging')
+
 # params_enc = np.zeros((4, 1))  # [0] * 4
 # params_dec = np.zeros((3, 1))  # [0] * 3
 #
@@ -134,4 +146,42 @@ with tf.Session() as sess:
   sess.run(init)
   basic_seq2seq = sess.run(s2s, feed_dict=feed_dict) # tensor_enc: seqs_enc, tensor_dec: seqs_dec})
 
-  print(basic_seq2seq)
+  # print(basic_seq2seq)
+
+################################################################################
+# # Test decoder inputs
+# import numpy as np
+# from six.moves import xrange
+#
+# batch_size = 3
+# decoder_size = 7
+# GO_ID = 'GO'
+# PAD_ID = 'PAD'
+# EOS_ID = 'EOS'
+#
+# decoder_batch = [['a', 'b', 'c', 'd'], ['e', 'f', 'g', 'h'],
+#                  ['i', 'j', 'k', 'l']]
+# decoder_inputs = []
+#
+# for i in xrange(batch_size):
+#   # Decoder inputs get an extra "GO" symbol, and are padded then.
+#   decoder_input = decoder_batch[i]
+#   decoder_pad_size = decoder_size - len(decoder_input)
+#   # decoder_inputs.append([data_utils.GO_ID] + decoder_input +
+#   decoder_inputs.append(
+#     [[GO_ID] + [in_val] for in_val in decoder_input] +
+#     [[PAD_ID] * 2] * decoder_pad_size)
+#
+#   # Set last decoder input's flag to EOS
+#   decoder_inputs[i][len(decoder_input) - 1][0] = EOS_ID
+#
+# # print(decoder_inputs)
+#
+# batch_decoder_inputs = []
+#
+# for length_idx in xrange(decoder_size):
+#   batch_decoder_inputs.append(
+#     np.array([decoder_inputs[batch_idx][length_idx]
+#               for batch_idx in xrange(batch_size)]))
+#
+# print(batch_decoder_inputs)
