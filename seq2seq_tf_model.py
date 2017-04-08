@@ -16,8 +16,10 @@ import numpy as np
 import tensorflow as tf
 import tfglib.seq2seq_datatable as s2s
 from tfglib.seq2seq_normalize import maxmin_scaling
+from tfglib.utils import init_logger
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+# logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logger = init_logger(name=__name__)
 
 
 class Seq2Seq(object):
@@ -29,6 +31,7 @@ class Seq2Seq(object):
     """
     infer: only True if used for test or predictions. False to train.
     """
+    logger.debug('Seq2Seq init')
     self.rnn_size = rnn_size
     self.attn_length = attn_length
     self.attn_size = attn_size
@@ -103,6 +106,7 @@ class Seq2Seq(object):
 
   @staticmethod
   def build_multirnn_block(rnn_size, rnn_layers, cell_type):
+    logger.debug('Build RNN block')
     if cell_type == 'gru':
       cell = tf.contrib.rnn.GRUCell(rnn_size)
     elif cell_type == 'lstm':
@@ -119,14 +123,16 @@ class Seq2Seq(object):
   @staticmethod
   def mse_loss(gtruth, prediction):
     # Previous to the computation, I gotta mask the predictions
-
+    logger.debug('Compute loss')
     return tf.reduce_mean(tf.squared_difference(gtruth, prediction))
 
   def inference(self):
+    logger.debug('Inference')
     from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import \
       attention_decoder as tf_attention_decoder
     from tensorflow.contrib.rnn.python.ops.core_rnn import \
       static_rnn as tf_static_rnn
+    logger.debug('Imported seq2seq model from TF')
 
     with tf.variable_scope("encoder"):
       enc_cell = Seq2Seq.build_multirnn_block(self.rnn_size,
@@ -134,14 +140,15 @@ class Seq2Seq(object):
                                               self.cell_type)
       self.enc_zero = enc_cell.zero_state(self.batch_size, tf.float32)
 
-      # TODO Check why code is stuck at this line
+      logger.debug('Initialize encoder')
       enc_out, enc_state = tf_static_rnn(enc_cell,
                                          self.encoder_inputs,
                                          initial_state=self.enc_zero,
                                          sequence_length=self.seq_length)
+
     # this op is created to visualize the thought vectors
     self.enc_state = enc_state
-    logging.info(
+    logger.info(
       'enc out (len {}) tensors shape: {}'.format(
         len(enc_out), enc_out[0].get_shape()
       ))
@@ -152,7 +159,7 @@ class Seq2Seq(object):
                                             self.cell_type)
     if self.dropout > 0:
       # print('Applying dropout {} to decoder'.format(self.dropout))
-      logging.info('Applying dropout {} to decoder'.format(self.dropout))
+      logger.info('Applying dropout {} to decoder'.format(self.dropout))
       dec_cell = tf.contrib.rnn.DropoutWrapper(dec_cell,
                                                input_keep_prob=self.keep_prob)
 
@@ -165,12 +172,12 @@ class Seq2Seq(object):
       loop_function = None
 
     # First calculate a concatenation of encoder outputs to put attention on.
-    # TODO Change array_ops for tf
     top_states = [
       tf.reshape(e, [-1, 1, enc_cell.output_size]) for e in enc_out
     ]
     attention_states = tf.concat(top_states, 1)
 
+    logger.debug('Initialize decoder')
     dec_out, dec_state = tf_attention_decoder(
       self.decoder_inputs, enc_state, cell=dec_cell,
       attention_states=attention_states, loop_function=loop_function
@@ -180,7 +187,7 @@ class Seq2Seq(object):
     # merge outputs into a tensor and transpose to be [B, seq_length, out_dim]
     dec_outputs = tf.transpose(tf.stack(dec_out), [1, 0, 2])
     # print('dec outputs shape: ', dec_outputs.get_shape())
-    logging.info('dec outputs shape: {}'.format(dec_outputs.get_shape()))
+    logger.info('dec outputs shape: {}'.format(dec_outputs.get_shape()))
 
     return dec_outputs
 
@@ -188,6 +195,7 @@ class Seq2Seq(object):
 class DataLoader(object):
   # TODO Finish this class and move it to a new file
   def __init__(self, args):
+    logger.debug('DataLoader init')
     self.batch_size = args.batch_size
 
     (self.src_datatable,
@@ -211,8 +219,9 @@ class DataLoader(object):
 
   def load_dataset(self, data_path, out_file, save_h5, train_out_file,
                    validation_fraction):
+    logger.debug('Load dataset')
     if save_h5:
-      logging.info('Saving training datatable')
+      logger.info('Saving datatable')
 
       (src_datatable,
        src_masks,
@@ -223,11 +232,10 @@ class DataLoader(object):
        train_speakers_min
        ) = s2s.seq2seq_save_datatable(data_path, out_file)
 
-      logging.info('DONE Saving training datatable')
+      logger.info('DONE Saving datatable')
 
     else:
-      logging.info('Load pretraining parameters')
-      logging.info(train_out_file)
+      logger.info('Load parameters. File: {}'.format(train_out_file))
       (src_datatable,
        src_masks,
        trg_datatable,
@@ -236,10 +244,12 @@ class DataLoader(object):
        train_speakers_max,
        train_speakers_min
        ) = s2s.seq2seq2_load_datatable(train_out_file + '.h5')
-      logging.info('loaded parameters')
+      logger.info('DONE Loaded parameters')
+
     train_speakers = train_speakers_max.shape[0]
 
     # Normalize data
+    logger.debug('Normalize data')
     # Iterate over sequence 'slices'
     assert src_datatable.shape[0] == trg_datatable.shape[0]
 
@@ -257,6 +267,7 @@ class DataLoader(object):
       )
 
     # # TODO Implement choice between returning training data or validation data
+    # logger.debug('Split into training and validation')
     # ################################################
     # # Split data into training and validation sets #
     # ################################################
@@ -298,8 +309,10 @@ class DataLoader(object):
             train_speakers_max, train_speakers_min, max_seq_length)
 
   def next_batch(self):
+    logger.debug('Initialize next batch generator')
     batch_id = 0
     while True:
+      logger.debug('--> Next batch - Prepare <--')
       src_batch = self.src_datatable[
                   batch_id * self.batch_size:(batch_id + 1) * self.batch_size,
                   :, :]
@@ -311,4 +324,5 @@ class DataLoader(object):
 
       batch_id = (batch_id + 1) % self.batches_per_epoch
 
+      logger.debug('--> Next batch - Yield <--')
       yield (src_batch, trg_batch, trg_mask)

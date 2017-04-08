@@ -11,12 +11,13 @@ from __future__ import print_function
 
 import argparse
 import gzip
-import logging
 import os
 import timeit
 from sys import version_info
+
 import numpy as np
 import tensorflow as tf
+from tfglib.utils import init_logger
 
 from seq2seq_tf_model import Seq2Seq, DataLoader
 
@@ -27,17 +28,18 @@ else:
   import cPickle as pickle
 
 # Initialize logger
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
-print('printing test')
-logging.warning('logging test')
-logging.info('logging test')
-logging.info('logging test')
+logger = init_logger(name=__name__)
 
-logging.info('before defining main')
+logger.debug('Before defining main')
+
+
 def main(args):
+  logger.debug('Main')
+
   # If-else for training and testing
-  logging.info('main')
   if args.do_train:
+    logger.info('Training')
+
     # Load training dataset
     # (src_datatable, trg_datatable, trg_masks, train_spk, train_spk_max,
     # train_spk_min, max_seq_length) = load_dataset(args.train_data_path,
@@ -45,16 +47,16 @@ def main(args):
     #                                                    args.save_h5,
     #                                                    args.val_fraction)
 
-    logging.info('loading data')
+    logger.debug('Initialize DataLoader')
     dl = DataLoader(args)
 
-    logging.info('initializing model')
+    logger.debug('Initialize model')
     # TODO Remove '10' and put max_seq_length in its place
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
                             # args.rnn_size, 10, args.params_len)
                             args.rnn_size, dl.max_seq_length, args.params_len)
 
-    logging.info('entering training')
+    logger.info('Start training')
     train(args, seq2seq_model, dl)
 
   if args.do_test:
@@ -70,15 +72,23 @@ def main(args):
                             args.rnn_size, max_test_length, args.params_len)
 
     test(args, seq2seq_model)
-logging.info('defined main')
 
-logging.info('before define train')
+
+logger.debug('Defined main')
+
+logger.debug('Before define train')
+
+
 def train(args, model, dl):
+  logger.debug('Inside train')
   with tf.Session() as sess:
+    logger.debug('Define constants')
     batch_idx = 0
     curr_epoch = 0
     count = 0
     batch_timings = []
+
+    logger.debug('Initialize TF variables')
     try:
       tf.global_variables_initializer().run()
       merged = tf.summary.merge_all()
@@ -90,29 +100,36 @@ def train(args, model, dl):
     train_writer = tf.summary.FileWriter(LOG_DIR, sess.graph)
     best_val_loss = 10e6
     curr_patience = opts.patience
+    logger.debug('Defined constants')
 
+    logger.debug('Start batch loop')
     for src_batch, trg_batch, trg_mask in dl.next_batch():
       if curr_epoch == 0 and batch_idx == 0:
         batches_per_epoch = dl.batches_per_epoch
-        logging.info('Batches per epoch: {}'.format(batches_per_epoch))
+        logger.info('Batches per epoch: {}'.format(batches_per_epoch))
       beg_t = timeit.default_timer()
 
       # Model's placeholders
+      logger.debug('Fill feed_dict with gtruth')
       feed_dict = {
         model.gtruth: trg_batch[:, 0:int(model.gtruth.get_shape()[1]), :]}
 
+      logger.debug('feed_dict - encoder_inputs')
       for i, enc_in in enumerate(model.encoder_inputs):
         # TODO Fix encoder_inputs so that it takes 64 parameters as input
         # feed_dict[enc_in] = src_batch[:,i,:]
         feed_dict[enc_in] = src_batch[:, i, 0:44]
 
       # Decoder inputs are trg_batch with the first timestep set to 0 (GO)
+      logger.debug('Roll decoder inputs and add GO symbol')
       trg_batch = np.roll(trg_batch, 1, axis=1)
       trg_batch[:, 0, :] = np.zeros((model.batch_size, model.parameters_length))
 
+      logger.debug('feed_dict - decoder_inputs')
       for i, dec_in in enumerate(model.decoder_inputs):
         feed_dict[dec_in] = trg_batch[:, i, :]
 
+      logger.debug('sess.run')
       # tr_loss, _, enc_state, summary = sess.run(
       #   [model.loss, model.train_op, model.enc_state, merged],
       #   feed_dict=feed_dict)
@@ -120,10 +137,11 @@ def train(args, model, dl):
         [model.loss, model.train_op],
         feed_dict=feed_dict)
 
+      logger.debug('Append batch timings')
       batch_timings.append(timeit.default_timer() - beg_t)
 
       # TODO Use the right variables in this print
-      logging.info('{}/{} (epoch {}) loss {}, time/batch {} s'.format(
+      logger.info('{}/{} (epoch {}) loss {}, time/batch {} s'.format(
         count,
         opts.epoch * batches_per_epoch,
         curr_epoch,
@@ -131,33 +149,44 @@ def train(args, model, dl):
         np.mean(batch_timings)))
       if batch_idx % opts.save_every == 0:
         # train_writer.add_summary(summary, count)
+        logger.info('Save checkpoint')
         checkpoint_file = os.path.join(opts.save_path, 'model.ckpt')
         model.save(sess, checkpoint_file, count)
 
       batch_idx += 1
       count += 1
       if curr_epoch >= opts.epoch:
+        logger.info('Finished epochs -> BREAK')
         break
 
-logging.info('defined train')
 
-logging.info('before define evaluate')
+logger.debug('Defined train')
+
+logger.debug('Before define evaluate')
+
+
 def evaluate(sess, args, model):
   """ Evaluate an epoch over the given data_loader batches """
 
   # TODO Cridar run sols amb model.loss, sense train_op
   return
-logging.info('defined evaluate')
 
-logging.info('before define test')
+
+logger.debug('Defined evaluate')
+
+logger.debug('Before define test')
+
+
 def test(args, model):
   """ Evaluate an epoch over the given data_loader batches """
   return
-logging.info('defined test')
 
-logging.info('before if __main__')
+
+logger.debug('Defined test')
+
+logger.debug('Before if __main__')
 if __name__ == '__main__':
-  logging.info('before parsing args')
+  logger.debug('Before parsing args')
   parser = argparse.ArgumentParser(
     description="Convert voice signal with seq2seq model")
   parser.add_argument('--train_data_path', type=str, default="data/training/")
@@ -194,14 +223,14 @@ if __name__ == '__main__':
   parser.set_defaults(do_train=True, do_test=True, save_h5=False)
   opts = parser.parse_args()
 
-  logging.info('parsed arguments')
+  logger.debug('Parsed arguments')
   if not os.path.exists(opts.save_path):
     os.makedirs(opts.save_path)
   # save config
   with gzip.open(os.path.join(opts.save_path, 'config.pkl.gz'), 'wb') as cf:
     pickle.dump(opts, cf)
 
-  logging.info('before calling main')
+  logger.debug('Before calling main')
   main(opts)
 
   # Unused arguments
