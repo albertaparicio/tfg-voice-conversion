@@ -26,12 +26,17 @@ if version_info.major > 2:
 else:
   import cPickle as pickle
 
-# Initialize logger at INFO level
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+# Initialize logger
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+print('printing test')
+logging.warning('logging test')
+logging.info('logging test')
+logging.info('logging test')
 
-
+logging.info('before defining main')
 def main(args):
   # If-else for training and testing
+  logging.info('main')
   if args.do_train:
     # Load training dataset
     # (src_datatable, trg_datatable, trg_masks, train_spk, train_spk_max,
@@ -40,13 +45,16 @@ def main(args):
     #                                                    args.save_h5,
     #                                                    args.val_fraction)
 
+    logging.info('loading data')
     dl = DataLoader(args)
 
+    logging.info('initializing model')
     # TODO Remove '10' and put max_seq_length in its place
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
                             # args.rnn_size, 10, args.params_len)
                             args.rnn_size, dl.max_seq_length, args.params_len)
 
+    logging.info('entering training')
     train(args, seq2seq_model, dl)
 
   if args.do_test:
@@ -62,8 +70,9 @@ def main(args):
                             args.rnn_size, max_test_length, args.params_len)
 
     test(args, seq2seq_model)
+logging.info('defined main')
 
-
+logging.info('before define train')
 def train(args, model, dl):
   with tf.Session() as sess:
     batch_idx = 0
@@ -130,22 +139,25 @@ def train(args, model, dl):
       if curr_epoch >= opts.epoch:
         break
 
-  return
+logging.info('defined train')
 
-
+logging.info('before define evaluate')
 def evaluate(sess, args, model):
   """ Evaluate an epoch over the given data_loader batches """
 
   # TODO Cridar run sols amb model.loss, sense train_op
   return
+logging.info('defined evaluate')
 
-
+logging.info('before define test')
 def test(args, model):
   """ Evaluate an epoch over the given data_loader batches """
   return
+logging.info('defined test')
 
-
+logging.info('before if __main__')
 if __name__ == '__main__':
+  logging.info('before parsing args')
   parser = argparse.ArgumentParser(
     description="Convert voice signal with seq2seq model")
   parser.add_argument('--train_data_path', type=str, default="data/training/")
@@ -182,12 +194,14 @@ if __name__ == '__main__':
   parser.set_defaults(do_train=True, do_test=True, save_h5=False)
   opts = parser.parse_args()
 
+  logging.info('parsed arguments')
   if not os.path.exists(opts.save_path):
     os.makedirs(opts.save_path)
   # save config
   with gzip.open(os.path.join(opts.save_path, 'config.pkl.gz'), 'wb') as cf:
     pickle.dump(opts, cf)
 
+  logging.info('before calling main')
   main(opts)
 
   # Unused arguments

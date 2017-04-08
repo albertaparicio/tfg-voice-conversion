@@ -226,7 +226,8 @@ class DataLoader(object):
       logging.info('DONE Saving training datatable')
 
     else:
-      print('Load pretraining parameters')
+      logging.info('Load pretraining parameters')
+      logging.info(train_out_file)
       (src_datatable,
        src_masks,
        trg_datatable,
@@ -235,7 +236,7 @@ class DataLoader(object):
        train_speakers_max,
        train_speakers_min
        ) = s2s.seq2seq2_load_datatable(train_out_file + '.h5')
-
+      logging.info('loaded parameters')
     train_speakers = train_speakers_max.shape[0]
 
     # Normalize data
