@@ -10,7 +10,7 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
-import logging
+import os
 
 import numpy as np
 import tensorflow as tf
@@ -18,20 +18,19 @@ import tfglib.seq2seq_datatable as s2s
 from tfglib.seq2seq_normalize import maxmin_scaling
 from tfglib.utils import init_logger
 
-# logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-logger = init_logger(name=__name__)
-
 
 class Seq2Seq(object):
   # TODO Figure out suitable values for attention length and size
-  def __init__(self, enc_rnn_layers, dec_rnn_layers, rnn_size, seq_length,
-               params_length, cell_type='lstm', batch_size=20,
+  def __init__(self, logger_level, enc_rnn_layers, dec_rnn_layers, rnn_size,
+               seq_length, params_length, cell_type='lstm', batch_size=20,
                learning_rate=0.001, dropout=0.5, optimizer='adam', clip_norm=5,
                attn_length=500, attn_size=100, infer=False):
     """
     infer: only True if used for test or predictions. False to train.
     """
-    logger.debug('Seq2Seq init')
+    self.logger = init_logger(name=__name__, level=logger_level)
+
+    self.logger.debug('Seq2Seq init')
     self.rnn_size = rnn_size
     self.attn_length = attn_length
     self.attn_size = attn_size
@@ -85,7 +84,11 @@ class Seq2Seq(object):
     #                                        [batch_size,
     #                                         self.attn_length,
     #                                         self.attn_size])
+
+    # To be assigned a value in self.inference()
+    self.enc_state, self.encoder_vars = None, None
     self.prediction = self.inference()
+
     self.loss = self.mse_loss(self.gtruth, self.prediction)
 
     tvars = tf.trainable_variables()
@@ -102,11 +105,9 @@ class Seq2Seq(object):
     self.opt = tf.train.AdamOptimizer(self.curr_lr)
 
     self.train_op = self.opt.apply_gradients(zip(grads, tvars))
-    self.enc_state = None  # TODO To be assigned a value in self.inference()
 
-  @staticmethod
-  def build_multirnn_block(rnn_size, rnn_layers, cell_type):
-    logger.debug('Build RNN block')
+  def build_multirnn_block(self, rnn_size, rnn_layers, cell_type):
+    self.logger.debug('Build RNN block')
     if cell_type == 'gru':
       cell = tf.contrib.rnn.GRUCell(rnn_size)
     elif cell_type == 'lstm':
@@ -120,27 +121,27 @@ class Seq2Seq(object):
                                          state_is_tuple=True)
     return cell
 
-  @staticmethod
-  def mse_loss(gtruth, prediction):
+  def mse_loss(self, gtruth, prediction):
     # Previous to the computation, I gotta mask the predictions
-    logger.debug('Compute loss')
+    self.logger.debug('Compute loss')
     return tf.reduce_mean(tf.squared_difference(gtruth, prediction))
 
   def inference(self):
-    logger.debug('Inference')
+    self.logger.debug('Inference')
     from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import \
       attention_decoder as tf_attention_decoder
     from tensorflow.contrib.rnn.python.ops.core_rnn import \
       static_rnn as tf_static_rnn
-    logger.debug('Imported seq2seq model from TF')
+
+    self.logger.debug('Imported seq2seq model from TF')
 
     with tf.variable_scope("encoder"):
-      enc_cell = Seq2Seq.build_multirnn_block(self.rnn_size,
-                                              self.enc_rnn_layers,
-                                              self.cell_type)
+      enc_cell = self.build_multirnn_block(self.rnn_size,
+                                           self.enc_rnn_layers,
+                                           self.cell_type)
       self.enc_zero = enc_cell.zero_state(self.batch_size, tf.float32)
 
-      logger.debug('Initialize encoder')
+      self.logger.debug('Initialize encoder')
       enc_out, enc_state = tf_static_rnn(enc_cell,
                                          self.encoder_inputs,
                                          initial_state=self.enc_zero,
@@ -148,18 +149,18 @@ class Seq2Seq(object):
 
     # this op is created to visualize the thought vectors
     self.enc_state = enc_state
-    logger.info(
+    self.logger.info(
       'enc out (len {}) tensors shape: {}'.format(
         len(enc_out), enc_out[0].get_shape()
       ))
     # print('enc out tensor shape: ', enc_out.get_shape())
 
-    dec_cell = Seq2Seq.build_multirnn_block(self.rnn_size,
-                                            self.dec_rnn_layers,
-                                            self.cell_type)
+    dec_cell = self.build_multirnn_block(self.rnn_size,
+                                         self.dec_rnn_layers,
+                                         self.cell_type)
     if self.dropout > 0:
       # print('Applying dropout {} to decoder'.format(self.dropout))
-      logger.info('Applying dropout {} to decoder'.format(self.dropout))
+      self.logger.info('Applying dropout {} to decoder'.format(self.dropout))
       dec_cell = tf.contrib.rnn.DropoutWrapper(dec_cell,
                                                input_keep_prob=self.keep_prob)
 
@@ -177,7 +178,7 @@ class Seq2Seq(object):
     ]
     attention_states = tf.concat(top_states, 1)
 
-    logger.debug('Initialize decoder')
+    self.logger.debug('Initialize decoder')
     dec_out, dec_state = tf_attention_decoder(
       self.decoder_inputs, enc_state, cell=dec_cell,
       attention_states=attention_states, loop_function=loop_function
@@ -187,15 +188,54 @@ class Seq2Seq(object):
     # merge outputs into a tensor and transpose to be [B, seq_length, out_dim]
     dec_outputs = tf.transpose(tf.stack(dec_out), [1, 0, 2])
     # print('dec outputs shape: ', dec_outputs.get_shape())
-    logger.info('dec outputs shape: {}'.format(dec_outputs.get_shape()))
+    self.logger.info('dec outputs shape: {}'.format(dec_outputs.get_shape()))
+
+    self.encoder_vars = {}
+    for tvar in tf.trainable_variables():
+      if 'char_embedding' in tvar.name or 'encoder' in tvar.name:
+        self.encoder_vars[tvar.name] = tvar
+      print('tvar: ', tvar.name)
 
     return dec_outputs
+
+  def save(self, sess, save_filename, global_step=None):
+    if not hasattr(self, 'saver'):
+      self.saver = tf.train.Saver()
+    if not hasattr(self, 'encoder_saver'):
+      self.encoder_saver = tf.train.Saver(var_list=self.encoder_vars)
+    print('Saving checkpoint...')
+    if global_step is not None:
+      self.encoder_saver.save(sess, save_filename + '.encoder',
+                              global_step)
+      self.saver.save(sess, save_filename, global_step)
+    else:
+      self.encoder_saver.save(sess, save_filename + '.encoder')
+      self.saver.save(sess, save_filename)
+
+  def load(self, sess, save_path):
+    if not hasattr(self, 'saver'):
+      self.saver = tf.train.Saver()
+    if os.path.exists(os.path.join(save_path, 'best_model.ckpt')):
+      ckpt_name = os.path.join(save_path, 'best_model.ckpt')
+      print('Loading checkpoint {}...'.format(ckpt_name))
+      self.saver.restore(sess, os.path.join(save_path, ckpt_name))
+    else:
+      ckpt = tf.train.get_checkpoint_state(save_path)
+      if ckpt and ckpt.model_checkpoint_path:
+        ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+        print('Loading checkpoint {}...'.format(ckpt_name))
+        self.saver.restore(sess, os.path.join(save_path, ckpt_name))
+        return True
+      else:
+        return False
 
 
 class DataLoader(object):
   # TODO Finish this class and move it to a new file
-  def __init__(self, args):
-    logger.debug('DataLoader init')
+  def __init__(self, args, logger_level, max_seq_length=None):
+    self.logger = init_logger(name=__name__, level=logger_level)
+
+    self.logger.debug('DataLoader init')
     self.batch_size = args.batch_size
 
     (self.src_datatable,
@@ -213,15 +253,18 @@ class DataLoader(object):
       args.val_fraction
     )
 
+    if max_seq_length is not None:
+      self.max_seq_length = max_seq_length
+
     self.batches_per_epoch = int(
       np.floor(self.src_datatable.shape[0] / self.batch_size)
     )
 
   def load_dataset(self, data_path, out_file, save_h5, train_out_file,
                    validation_fraction):
-    logger.debug('Load dataset')
+    self.logger.debug('Load dataset')
     if save_h5:
-      logger.info('Saving datatable')
+      self.logger.info('Saving datatable')
 
       (src_datatable,
        src_masks,
@@ -232,10 +275,10 @@ class DataLoader(object):
        train_speakers_min
        ) = s2s.seq2seq_save_datatable(data_path, out_file)
 
-      logger.info('DONE Saving datatable')
+      self.logger.info('DONE Saving datatable')
 
     else:
-      logger.info('Load parameters. File: {}'.format(train_out_file))
+      self.logger.info('Load parameters. File: {}'.format(train_out_file))
       (src_datatable,
        src_masks,
        trg_datatable,
@@ -244,12 +287,12 @@ class DataLoader(object):
        train_speakers_max,
        train_speakers_min
        ) = s2s.seq2seq2_load_datatable(train_out_file + '.h5')
-      logger.info('DONE Loaded parameters')
+      self.logger.info('DONE Loaded parameters')
 
     train_speakers = train_speakers_max.shape[0]
 
     # Normalize data
-    logger.debug('Normalize data')
+    self.logger.debug('Normalize data')
     # Iterate over sequence 'slices'
     assert src_datatable.shape[0] == trg_datatable.shape[0]
 
@@ -267,7 +310,7 @@ class DataLoader(object):
       )
 
     # # TODO Implement choice between returning training data or validation data
-    # logger.debug('Split into training and validation')
+    # self.logger.debug('Split into training and validation')
     # ################################################
     # # Split data into training and validation sets #
     # ################################################
@@ -309,10 +352,10 @@ class DataLoader(object):
             train_speakers_max, train_speakers_min, max_seq_length)
 
   def next_batch(self):
-    logger.debug('Initialize next batch generator')
+    self.logger.debug('Initialize next batch generator')
     batch_id = 0
     while True:
-      logger.debug('--> Next batch - Prepare <--')
+      self.logger.debug('--> Next batch - Prepare <--')
       src_batch = self.src_datatable[
                   batch_id * self.batch_size:(batch_id + 1) * self.batch_size,
                   :, :]
@@ -324,5 +367,5 @@ class DataLoader(object):
 
       batch_id = (batch_id + 1) % self.batches_per_epoch
 
-      logger.debug('--> Next batch - Yield <--')
+      self.logger.debug('--> Next batch - Yield <--')
       yield (src_batch, trg_batch, trg_mask)
