@@ -75,9 +75,10 @@ if __name__ == '__main__':
 
   logger.debug('Parsed arguments')
   if not os.path.exists(opts.save_path):
-    os.makedirs(opts.save_path)
+    os.makedirs(os.path.join(opts.save_path, 'tf_train'))
   # save config
-  with gzip.open(os.path.join(opts.save_path, 'config.pkl.gz'), 'wb') as cf:
+  with gzip.open(os.path.join(opts.save_path, 'tf_train', 'config.pkl.gz'),
+                 'wb') as cf:
     pickle.dump(opts, cf)
 
 logger.debug('Before defining main')
@@ -91,12 +92,12 @@ def main(args):
     logger.info('Training')
 
     logger.debug('Initialize DataLoader')
-    dl = DataLoader(args, max_seq_length=10, logger_level=opts.log)
+    # dl = DataLoader(args, max_seq_length=10, logger_level=opts.log)
+    dl = DataLoader(args, logger_level=opts.log)
 
     logger.debug('Initialize model')
     # TODO Remove '10' and put max_seq_length in its place
     seq2seq_model = Seq2Seq(opts.log, args.enc_rnn_layers, args.dec_rnn_layers,
-                            # args.rnn_size, 10, args.params_len)
                             args.rnn_size, dl.max_seq_length, args.params_len)
 
     logger.info('Start training')
@@ -196,7 +197,7 @@ def train(args, model, dl):
       if batch_idx % opts.save_every == 0:
         # train_writer.add_summary(summary, count)
         logger.info('Save checkpoint')
-        checkpoint_file = os.path.join(opts.save_path, 'model.ckpt')
+        checkpoint_file = os.path.join(LOG_DIR, 'model.ckpt')
         model.save(sess, checkpoint_file, count)
       if batch_idx >= dl.batches_per_epoch:
         curr_epoch += 1
