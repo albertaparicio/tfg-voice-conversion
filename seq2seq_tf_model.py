@@ -21,10 +21,11 @@ from tfglib.utils import init_logger
 
 class Seq2Seq(object):
   # TODO Figure out suitable values for attention length and size
-  def __init__(self, logger_level, enc_rnn_layers, dec_rnn_layers, rnn_size,
+  def __init__(self, enc_rnn_layers, dec_rnn_layers, rnn_size,
                seq_length, params_length, cell_type='lstm', batch_size=20,
                learning_rate=0.001, dropout=0.5, optimizer='adam', clip_norm=5,
-               attn_length=500, attn_size=100, infer=False):
+               attn_length=500, attn_size=100, infer=False,
+               logger_level='INFO'):
     """
     infer: only True if used for test or predictions. False to train.
     """
@@ -34,9 +35,11 @@ class Seq2Seq(object):
     self.rnn_size = rnn_size
     self.attn_length = attn_length
     self.attn_size = attn_size
+
     # Number of layers in encoder and decoder
     self.enc_rnn_layers = enc_rnn_layers
     self.dec_rnn_layers = dec_rnn_layers
+
     self.infer = infer
     if infer:
       self.keep_prob = tf.Variable(1., trainable=False)
@@ -49,47 +52,33 @@ class Seq2Seq(object):
     self.clip_norm = clip_norm
     self.learning_rate = learning_rate
 
-    # TODO The sequence length should be the actual seq_length of each sequence?
-    # self.seq_length = seq_length
-    # self.seq_length = seq_length * np.ones((batch_size,))
     self.seq_length = tf.placeholder(tf.int32, [self.batch_size])
 
     self.parameters_length = params_length
+
     self.gtruth = tf.placeholder(tf.float32,
                                  [self.batch_size,
                                   seq_length,
                                   self.parameters_length])
-    #
-    # self.encoder_inputs = tf.placeholder(tf.float32,
-    #                                      [batch_size,
-    #                                       self.seq_length,
-    #                                       self.parameters_length])
-    # inputs: A length T list of inputs, each a Tensor of
-    # shape [batch_size, input_size], or a nested tuple of such elements
+    self.gtruth_masks = tf.placeholder(tf.float32,
+                                       [self.batch_size, seq_length])
+
     self.encoder_inputs = [
       tf.placeholder(tf.float32, [batch_size, self.parameters_length]
                      ) for _ in range(seq_length)]
 
-    # self.decoder_inputs = tf.placeholder(tf.float32,
-    #                                      [batch_size,
-    #                                       seq_length,
-    #                                       self.parameters_length])
-    # decoder_inputs: A list of 2D Tensors [batch_size x input_size].
     self.decoder_inputs = [
       tf.placeholder(tf.float32, [batch_size, self.parameters_length]
                      ) for _ in range(seq_length)]
 
-    # # attention_states: 3D Tensor [batch_size x attn_length x attn_size]
-    # self.attention_states = tf.placeholder(tf.float32,
-    #                                        [batch_size,
-    #                                         self.attn_length,
-    #                                         self.attn_size])
-
-    # To be assigned a value in self.inference()
+    # To be assigned a value later
     self.enc_state, self.encoder_vars = None, None
+
     self.prediction = self.inference()
 
-    self.loss = self.mse_loss(self.gtruth, self.prediction)
+    self.loss = self.mse_loss(self.gtruth, self.gtruth_masks, self.prediction)
+    self.val_loss = self.mse_loss(self.gtruth, self.gtruth_masks,
+                                  self.prediction)
 
     tvars = tf.trainable_variables()
     grads = []
@@ -121,10 +110,12 @@ class Seq2Seq(object):
                                          state_is_tuple=True)
     return cell
 
-  def mse_loss(self, gtruth, prediction):
-    # Previous to the computation, I gotta mask the predictions
+  def mse_loss(self, gtruth, gtruth_masks, prediction):
+    # Previous to the computation, the predictions are masked
     self.logger.debug('Compute loss')
-    return tf.reduce_mean(tf.squared_difference(gtruth, prediction))
+    return tf.reduce_mean(tf.squared_difference(gtruth,
+                                                prediction * tf.expand_dims(
+                                                  gtruth_masks, -1)))
 
   def inference(self):
     self.logger.debug('Inference')
@@ -147,7 +138,7 @@ class Seq2Seq(object):
                                          initial_state=self.enc_zero,
                                          sequence_length=self.seq_length)
 
-    # this op is created to visualize the thought vectors
+    # This op is created to visualize the thought vectors
     self.enc_state = enc_state
     self.logger.info(
       'enc out (len {}) tensors shape: {}'.format(
@@ -232,67 +223,157 @@ class Seq2Seq(object):
 
 class DataLoader(object):
   # TODO Finish this class and move it to a new file
-  def __init__(self, args, logger_level, max_seq_length=None):
+  def __init__(self, args, test=False, max_seq_length_dev=None,
+               logger_level='INFO'):
     self.logger = init_logger(name=__name__, level=logger_level)
 
     self.logger.debug('DataLoader init')
     self.batch_size = args.batch_size
 
-    (self.src_datatable,
-     self.trg_datatable,
-     self.trg_masks,
-     self.train_spk,
-     self.train_spk_max,
-     self.train_spk_min,
-     self.max_seq_length
-     ) = self.load_dataset(
-      args.train_data_path,
-      args.train_out_file,
-      args.save_h5,
-      args.train_out_file,
-      args.val_fraction
-    )
+    if test:
+      (self.src_test_data, self.trg_test_data, self.trg_test_masks_f,
+       self.train_speakers, self.train_speakers_max, self.train_speakers_min,
+       self.max_seq_length) = self.load_dataset(
+        args.train_data_path,
+        args.train_out_file,
+        args.test_data_path,
+        args.test_out_file,
+        args.save_h5,
+        test=test
+      )
 
-    if max_seq_length is not None:
-      self.max_seq_length = max_seq_length
-
-    self.batches_per_epoch = int(
-      np.floor(self.src_datatable.shape[0] / self.batch_size)
-    )
-
-  def load_dataset(self, data_path, out_file, save_h5, train_out_file,
-                   validation_fraction):
-    self.logger.debug('Load dataset')
-    if save_h5:
-      self.logger.info('Saving datatable')
-
-      (src_datatable,
-       src_masks,
-       trg_datatable,
-       trg_masks,
-       max_seq_length,
-       train_speakers_max,
-       train_speakers_min
-       ) = s2s.seq2seq_save_datatable(data_path, out_file)
-
-      self.logger.info('DONE Saving datatable')
+      self.test_batches_per_epoch = int(
+        np.floor(self.src_test_data.shape[0] / self.batch_size)
+      )
 
     else:
-      self.logger.info('Load parameters. File: {}'.format(train_out_file))
-      (src_datatable,
-       src_masks,
-       trg_datatable,
-       trg_masks,
-       max_seq_length,
-       train_speakers_max,
-       train_speakers_min
-       ) = s2s.seq2seq2_load_datatable(train_out_file + '.h5')
-      self.logger.info('DONE Loaded parameters')
+      (src_datatable, trg_datatable, trg_masks,
+       train_speakers, train_speakers_max, train_speakers_min,
+       self.max_seq_length) = self.load_dataset(
+        args.train_data_path,
+        args.train_out_file,
+        args.test_data_path,
+        args.test_out_file,
+        args.save_h5,
+      )
 
-    train_speakers = train_speakers_max.shape[0]
+      self.logger.debug('Split into training and validation')
+      ################################################
+      # Split data into training and validation sets #
+      ################################################
+      # ############################
+      # # COMMENT AFTER DEVELOPING #
+      # ############################
+      # batch_size = 2
+      # nb_epochs = 2
+      #
+      # num = 10
+      # src_datatable = src_datatable[0:num]
+      # src_masks = src_masks[0:num]
+      # trg_datatable = trg_datatable[0:num]
+      # trg_masks = trg_masks[0:num]
+      #
+      # model_description = 'DEV_' + model_description
+      # #################################################
+
+      self.src_train_data = src_datatable[0:int(np.floor(
+        src_datatable.shape[0] * (1 - args.val_fraction)))]
+      self.src_valid_data = src_datatable[int(np.floor(
+        src_datatable.shape[0] * (1 - args.val_fraction))):]
+
+      self.trg_train_data = trg_datatable[0:int(np.floor(
+        trg_datatable.shape[0] * (1 - args.val_fraction)))]
+      self.trg_valid_data = trg_datatable[int(np.floor(
+        trg_datatable.shape[0] * (1 - args.val_fraction))):]
+
+      self.trg_train_masks_f = trg_masks[0:int(np.floor(
+        trg_masks.shape[0] * (1 - args.val_fraction)))]
+      self.trg_valid_masks_f = trg_masks[int(np.floor(
+        trg_masks.shape[0] * (1 - args.val_fraction))):]
+
+      self.train_batches_per_epoch = int(
+        np.floor(self.src_train_data.shape[0] / self.batch_size)
+      )
+      self.valid_batches_per_epoch = int(
+        np.floor(self.src_valid_data.shape[0] / self.batch_size)
+      )
+
+    if max_seq_length_dev is not None:
+      self.max_seq_length = max_seq_length_dev
+
+  def load_dataset(self, train_data_path, train_out_file, test_data_path,
+                   test_out_file, save_h5, test=False):
+    import h5py
+
+    if test:
+      self.logger.debug('Load test dataset')
+      if save_h5:
+        self.logger.info('Saving datatable')
+
+        (src_datatable,
+         src_masks,
+         trg_datatable,
+         trg_masks,
+         max_seq_length,
+         _, _
+         ) = s2s.seq2seq_save_datatable(test_data_path, test_out_file)
+
+        self.logger.info('DONE Saving datatable')
+
+      else:
+        self.logger.info('Load parameters. File: {}'.format(test_out_file))
+        (src_datatable,
+         src_masks,
+         trg_datatable,
+         trg_masks,
+         max_seq_length,
+         _, _
+         ) = s2s.seq2seq2_load_datatable(test_out_file + '.h5')
+        self.logger.info('DONE Loaded parameters')
+
+      # Load training speakers data
+      with h5py.File(train_out_file + '.h5', 'r') as file:
+        # Load datasets
+        train_speakers_max = file.attrs.get('speakers_max')
+        train_speakers_min = file.attrs.get('speakers_min')
+
+        file.close()
+
+      train_speakers = train_speakers_max.shape[0]
+
+    else:
+      self.logger.debug('Load training dataset')
+      if save_h5:
+        self.logger.info('Saving datatable')
+
+        (src_datatable,
+         src_masks,
+         trg_datatable,
+         trg_masks,
+         max_seq_length,
+         train_speakers_max,
+         train_speakers_min
+         ) = s2s.seq2seq_save_datatable(train_data_path, train_out_file)
+
+        self.logger.info('DONE Saving datatable')
+
+      else:
+        self.logger.info('Load parameters. File: {}'.format(train_out_file))
+        (src_datatable,
+         src_masks,
+         trg_datatable,
+         trg_masks,
+         max_seq_length,
+         train_speakers_max,
+         train_speakers_min
+         ) = s2s.seq2seq2_load_datatable(train_out_file + '.h5')
+        self.logger.info('DONE Loaded parameters')
+
+      train_speakers = train_speakers_max.shape[0]
 
     # Normalize data
     self.logger.debug('Normalize data')
+
     # Iterate over sequence 'slices'
     assert src_datatable.shape[0] == trg_datatable.shape[0]
 
@@ -309,63 +390,46 @@ class DataLoader(object):
         train_speakers_min
       )
 
-    # # TODO Implement choice between returning training data or validation data
-    # self.logger.debug('Split into training and validation')
-    # ################################################
-    # # Split data into training and validation sets #
-    # ################################################
-    # # #################################
-    # # # TODO COMMENT AFTER DEVELOPING #
-    # # #################################
-    # # batch_size = 2
-    # # nb_epochs = 2
-    # #
-    # # num = 10
-    # # src_datatable = src_datatable[0:num]
-    # # src_masks = src_masks[0:num]
-    # # trg_datatable = trg_datatable[0:num]
-    # # trg_masks = trg_masks[0:num]
-    # #
-    # # model_description = 'DEV_' + model_description
-    # # #################################################
-    #
-    # src_data = src_datatable[0:int(np.floor(
-    #   src_datatable.shape[0] * (1 - validation_fraction)))]
-    # src_valid_data = src_datatable[int(np.floor(
-    #   src_datatable.shape[0] * (1 - validation_fraction))):]
-    #
-    # trg_data = trg_datatable[0:int(np.floor(
-    #   trg_datatable.shape[0] * (1 - validation_fraction)))]
-    # trg_valid_data = trg_datatable[int(np.floor(
-    #   trg_datatable.shape[0] * (1 - validation_fraction))):]
-    #
-    # trg_masks_f = trg_masks[0:int(np.floor(
-    #   trg_masks.shape[0] * (1 - validation_fraction)))]
-    # trg_valid_masks_f = trg_masks[int(np.floor(
-    #   trg_masks.shape[0] * (1 - validation_fraction))):]
-    #
-    # return (src_data, src_valid_data, trg_data, trg_valid_data, trg_masks_f,
-    #         trg_valid_masks_f, train_speakers, train_speakers_max,
-    #         train_speakers_min, max_seq_length)
+    return (src_datatable, trg_datatable, trg_masks,
+            train_speakers, train_speakers_max, train_speakers_min,
+            max_seq_length)
 
-    return (src_datatable, trg_datatable, trg_masks, train_speakers,
-            train_speakers_max, train_speakers_min, max_seq_length)
+  def next_batch(self, test=False, validation=False):
+    self.logger.debug('Choice between training data or validation data')
+    if test:
+      data_dict = {'src_data'         : self.src_test_data,
+                   'trg_data'         : self.trg_test_data,
+                   'trg_mask'         : self.trg_test_masks_f,
+                   'batches_per_epoch': self.test_batches_per_epoch}
+    else:
+      if validation:
+        data_dict = {'src_data'         : self.src_valid_data,
+                     'trg_data'         : self.trg_valid_data,
+                     'trg_mask'         : self.trg_valid_masks_f,
+                     'batches_per_epoch': self.valid_batches_per_epoch}
+      else:
+        # Training
+        data_dict = {'src_data'         : self.src_train_data,
+                     'trg_data'         : self.trg_train_data,
+                     'trg_mask'         : self.trg_train_masks_f,
+                     'batches_per_epoch': self.train_batches_per_epoch}
 
-  def next_batch(self):
     self.logger.debug('Initialize next batch generator')
     batch_id = 0
+
     while True:
       self.logger.debug('--> Next batch - Prepare <--')
-      src_batch = self.src_datatable[
+      src_batch = data_dict['src_data'][
                   batch_id * self.batch_size:(batch_id + 1) * self.batch_size,
                   :, :]
-      trg_batch = self.trg_datatable[
+
+      trg_batch = data_dict['trg_data'][
                   batch_id * self.batch_size:(batch_id + 1) * self.batch_size,
                   :, :]
-      trg_mask = self.trg_masks[
+      trg_mask = data_dict['trg_mask'][
                  batch_id * self.batch_size:(batch_id + 1) * self.batch_size, :]
 
-      batch_id = (batch_id + 1) % self.batches_per_epoch
+      batch_id = (batch_id + 1) % data_dict['batches_per_epoch']
 
       self.logger.debug('--> Next batch - Yield <--')
       yield (src_batch, trg_batch, trg_mask)
