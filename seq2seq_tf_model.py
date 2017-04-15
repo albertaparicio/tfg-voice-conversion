@@ -72,7 +72,7 @@ class Seq2Seq(object):
                      ) for _ in range(seq_length)]
 
     # To be assigned a value later
-    self.enc_state, self.encoder_vars = None, None
+    self.enc_state, self.encoder_vars, self.enc_zero = None, None, None
 
     self.prediction = self.inference()
 
@@ -115,14 +115,13 @@ class Seq2Seq(object):
     self.logger.debug('Compute loss')
     return tf.reduce_mean(tf.squared_difference(gtruth,
                                                 prediction * tf.expand_dims(
-                                                  gtruth_masks, -1)))
+                                                    gtruth_masks, -1)))
 
   def inference(self):
     self.logger.debug('Inference')
     from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import \
-      attention_decoder as tf_attention_decoder
-    from tensorflow.contrib.rnn.python.ops.core_rnn import \
-      static_rnn as tf_static_rnn
+      attention_decoder
+    from tensorflow.contrib.rnn.python.ops.core_rnn import static_rnn
 
     self.logger.debug('Imported seq2seq model from TF')
 
@@ -133,17 +132,17 @@ class Seq2Seq(object):
       self.enc_zero = enc_cell.zero_state(self.batch_size, tf.float32)
 
       self.logger.debug('Initialize encoder')
-      enc_out, enc_state = tf_static_rnn(enc_cell,
-                                         self.encoder_inputs,
-                                         initial_state=self.enc_zero,
-                                         sequence_length=self.seq_length)
+      enc_out, enc_state = static_rnn(enc_cell,
+                                      self.encoder_inputs,
+                                      initial_state=self.enc_zero,
+                                      sequence_length=self.seq_length)
 
     # This op is created to visualize the thought vectors
     self.enc_state = enc_state
     self.logger.info(
-      'enc out (len {}) tensors shape: {}'.format(
-        len(enc_out), enc_out[0].get_shape()
-      ))
+        'enc out (len {}) tensors shape: {}'.format(
+            len(enc_out), enc_out[0].get_shape()
+            ))
     # print('enc out tensor shape: ', enc_out.get_shape())
 
     dec_cell = self.build_multirnn_block(self.rnn_size,
@@ -166,14 +165,14 @@ class Seq2Seq(object):
     # First calculate a concatenation of encoder outputs to put attention on.
     top_states = [
       tf.reshape(e, [-1, 1, enc_cell.output_size]) for e in enc_out
-    ]
+      ]
     attention_states = tf.concat(top_states, 1)
 
     self.logger.debug('Initialize decoder')
-    dec_out, dec_state = tf_attention_decoder(
-      self.decoder_inputs, enc_state, cell=dec_cell,
-      attention_states=attention_states, loop_function=loop_function
-    )
+    dec_out, dec_state = attention_decoder(
+        self.decoder_inputs, enc_state, cell=dec_cell,
+        attention_states=attention_states, loop_function=loop_function
+        )
 
     # print('dec_state shape: ', dec_state[0].get_shape())
     # merge outputs into a tensor and transpose to be [B, seq_length, out_dim]
@@ -223,7 +222,7 @@ class Seq2Seq(object):
 
 class DataLoader(object):
   # TODO Finish this class and move it to a new file
-  def __init__(self, args, test=False, max_seq_length_dev=None,
+  def __init__(self, args, test=False, max_seq_length=None,
                logger_level='INFO'):
     self.logger = init_logger(name=__name__, level=logger_level)
 
@@ -231,31 +230,39 @@ class DataLoader(object):
     self.batch_size = args.batch_size
 
     if test:
+      self.s2s_datatable = s2s.Seq2SeqDatatable(args.test_data_path,
+                                                args.test_out_file,
+                                                shortseq=True,
+                                                max_seq_length=int(
+                                                    max_seq_length))
+
       (self.src_test_data, self.trg_test_data, self.trg_test_masks_f,
        self.train_speakers, self.train_speakers_max, self.train_speakers_min,
        self.max_seq_length) = self.load_dataset(
-        args.train_data_path,
-        args.train_out_file,
-        args.test_data_path,
-        args.test_out_file,
-        args.save_h5,
-        test=test
-      )
+          args.train_out_file,
+          args.test_out_file,
+          args.save_h5,
+          test=test
+          )
 
       self.test_batches_per_epoch = int(
-        np.floor(self.src_test_data.shape[0] / self.batch_size)
-      )
+          np.floor(self.src_test_data.shape[0] / self.batch_size)
+          )
 
     else:
+      self.s2s_datatable = s2s.Seq2SeqDatatable(args.train_data_path,
+                                                args.train_out_file,
+                                                shortseq=True,
+                                                max_seq_length=int(
+                                                    max_seq_length))
+
       (src_datatable, trg_datatable, trg_masks,
        train_speakers, train_speakers_max, train_speakers_min,
        self.max_seq_length) = self.load_dataset(
-        args.train_data_path,
-        args.train_out_file,
-        args.test_data_path,
-        args.test_out_file,
-        args.save_h5,
-      )
+          args.train_out_file,
+          args.test_out_file,
+          args.save_h5,
+          )
 
       self.logger.debug('Split into training and validation')
       ################################################
@@ -277,60 +284,56 @@ class DataLoader(object):
       # #################################################
 
       self.src_train_data = src_datatable[0:int(np.floor(
-        src_datatable.shape[0] * (1 - args.val_fraction)))]
+          src_datatable.shape[0] * (1 - args.val_fraction)))]
       self.src_valid_data = src_datatable[int(np.floor(
-        src_datatable.shape[0] * (1 - args.val_fraction))):]
+          src_datatable.shape[0] * (1 - args.val_fraction))):]
 
       self.trg_train_data = trg_datatable[0:int(np.floor(
-        trg_datatable.shape[0] * (1 - args.val_fraction)))]
+          trg_datatable.shape[0] * (1 - args.val_fraction)))]
       self.trg_valid_data = trg_datatable[int(np.floor(
-        trg_datatable.shape[0] * (1 - args.val_fraction))):]
+          trg_datatable.shape[0] * (1 - args.val_fraction))):]
 
       self.trg_train_masks_f = trg_masks[0:int(np.floor(
-        trg_masks.shape[0] * (1 - args.val_fraction)))]
+          trg_masks.shape[0] * (1 - args.val_fraction)))]
       self.trg_valid_masks_f = trg_masks[int(np.floor(
-        trg_masks.shape[0] * (1 - args.val_fraction))):]
+          trg_masks.shape[0] * (1 - args.val_fraction))):]
 
       self.train_batches_per_epoch = int(
-        np.floor(self.src_train_data.shape[0] / self.batch_size)
-      )
+          np.floor(self.src_train_data.shape[0] / self.batch_size)
+          )
       self.valid_batches_per_epoch = int(
-        np.floor(self.src_valid_data.shape[0] / self.batch_size)
-      )
+          np.floor(self.src_valid_data.shape[0] / self.batch_size)
+          )
 
-    if max_seq_length_dev is not None:
-      self.max_seq_length = max_seq_length_dev
-
-  def load_dataset(self, train_data_path, train_out_file, test_data_path,
-                   test_out_file, save_h5, test=False):
+  def load_dataset(self, train_out_file, test_out_file, save_h5, test=False):
     import h5py
 
+    self.logger.debug('Load test dataset')
+    if save_h5:
+      self.logger.info('Saving datatable')
+
+      (src_datatable,
+       src_masks,
+       trg_datatable,
+       trg_masks,
+       train_speakers_max,
+       train_speakers_min
+       ) = self.s2s_datatable.seq2seq_save_datatable()
+
+      self.logger.info('DONE - Saving datatable')
+
+    else:
+      self.logger.info('Load parameters')
+      (src_datatable,
+       src_masks,
+       trg_datatable,
+       trg_masks,
+       train_speakers_max,
+       train_speakers_min
+       ) = self.s2s_datatable.seq2seq2_load_datatable()
+      self.logger.info('DONE - Loaded parameters')
+
     if test:
-      self.logger.debug('Load test dataset')
-      if save_h5:
-        self.logger.info('Saving datatable')
-
-        (src_datatable,
-         src_masks,
-         trg_datatable,
-         trg_masks,
-         max_seq_length,
-         _, _
-         ) = s2s.seq2seq_save_datatable(test_data_path, test_out_file)
-
-        self.logger.info('DONE Saving datatable')
-
-      else:
-        self.logger.info('Load parameters. File: {}'.format(test_out_file))
-        (src_datatable,
-         src_masks,
-         trg_datatable,
-         trg_masks,
-         max_seq_length,
-         _, _
-         ) = s2s.seq2seq2_load_datatable(test_out_file + '.h5')
-        self.logger.info('DONE Loaded parameters')
-
       # Load training speakers data
       with h5py.File(train_out_file + '.h5', 'r') as file:
         # Load datasets
@@ -339,37 +342,7 @@ class DataLoader(object):
 
         file.close()
 
-      train_speakers = train_speakers_max.shape[0]
-
-    else:
-      self.logger.debug('Load training dataset')
-      if save_h5:
-        self.logger.info('Saving datatable')
-
-        (src_datatable,
-         src_masks,
-         trg_datatable,
-         trg_masks,
-         max_seq_length,
-         train_speakers_max,
-         train_speakers_min
-         ) = s2s.seq2seq_save_datatable(train_data_path, train_out_file)
-
-        self.logger.info('DONE Saving datatable')
-
-      else:
-        self.logger.info('Load parameters. File: {}'.format(train_out_file))
-        (src_datatable,
-         src_masks,
-         trg_datatable,
-         trg_masks,
-         max_seq_length,
-         train_speakers_max,
-         train_speakers_min
-         ) = s2s.seq2seq2_load_datatable(train_out_file + '.h5')
-        self.logger.info('DONE Loaded parameters')
-
-      train_speakers = train_speakers_max.shape[0]
+    train_speakers = train_speakers_max.shape[0]
 
     # Normalize data
     self.logger.debug('Normalize data')
@@ -381,18 +354,18 @@ class DataLoader(object):
       (
         src_datatable[i, :, 0:42],
         trg_datatable[i, :, 0:42]
-      ) = maxmin_scaling(
-        src_datatable[i, :, :],
-        src_masks[i, :],
-        trg_datatable[i, :, :],
-        trg_masks[i, :],
-        train_speakers_max,
-        train_speakers_min
-      )
+        ) = maxmin_scaling(
+          src_datatable[i, :, :],
+          src_masks[i, :],
+          trg_datatable[i, :, :],
+          trg_masks[i, :],
+          train_speakers_max,
+          train_speakers_min
+          )
 
     return (src_datatable, trg_datatable, trg_masks,
             train_speakers, train_speakers_max, train_speakers_min,
-            max_seq_length)
+            self.s2s_datatable.max_seq_length)
 
   def next_batch(self, test=False, validation=False):
     self.logger.debug('Choice between training data or validation data')

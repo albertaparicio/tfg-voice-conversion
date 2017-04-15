@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 from tfglib.utils import init_logger
 
-from seq2seq_tf_model import Seq2Seq, DataLoader
+from seq2seq_tf_model import DataLoader, Seq2Seq
 
 # Conditional imports
 if version_info.major > 2:
@@ -32,7 +32,7 @@ logger, opts = None, None
 if __name__ == '__main__':
   # logger.debug('Before parsing args')
   parser = argparse.ArgumentParser(
-    description="Convert voice signal with seq2seq model")
+      description="Convert voice signal with seq2seq model")
   parser.add_argument('--train_data_path', type=str, default="data/training/")
   parser.add_argument('--train_out_file', type=str,
                       default="data/seq2seq_train_datatable")
@@ -93,9 +93,8 @@ def main(args):
     logger.info('Training')
 
     logger.debug('Initialize training DataLoader')
-    # TODO Remove '10'
-    # dl = DataLoader(args, logger_level=args.log, max_seq_length_dev=10)
-    dl = DataLoader(args, logger_level=opts.log)
+    dl = DataLoader(args, logger_level=args.log, max_seq_length=500)
+    # dl = DataLoader(args, logger_level=opts.log)
 
     logger.debug('Initialize model')
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
@@ -109,9 +108,8 @@ def main(args):
     tf.reset_default_graph()
 
     logger.debug('Initialize test DataLoader')
-    # TODO Remove '10'
-    # dl = DataLoader(args, test=True, logger_level=args.log, max_seq_length_dev=10)
-    dl = DataLoader(args, test=True, logger_level=opts.log)
+    dl = DataLoader(args, test=True, logger_level=args.log, max_seq_length=500)
+    # dl = DataLoader(args, test=True, logger_level=opts.log)
 
     logger.debug('Initialize model')
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
@@ -144,7 +142,7 @@ def evaluate(sess, model, data_loader, curr_epoch):
       model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
       # TODO The sequence length should be the seq_length of each sequence?
       model.seq_length  : int(data_loader.max_seq_length) * np.ones(
-        (model.batch_size,), dtype=np.int32)}
+          (model.batch_size,), dtype=np.int32)}
 
     logger.debug('feed_dict - encoder_inputs')
     for i, enc_in in enumerate(model.encoder_inputs):
@@ -174,7 +172,7 @@ def evaluate(sess, model, data_loader, curr_epoch):
     batch_idx += 1
     logger.info('** Mean eval loss for epoch {}: {} **'.format(curr_epoch,
                                                                np.mean(
-                                                                 eval_losses)))
+                                                                   eval_losses)))
 
   return eval_losses
 
@@ -213,7 +211,7 @@ def train(model, dl):
       if curr_epoch == 0 and batch_idx == 0:
         logger.info('Batches per epoch: {}'.format(dl.train_batches_per_epoch))
         logger.info(
-          'Total batches: {}'.format(dl.train_batches_per_epoch * opts.epoch))
+            'Total batches: {}'.format(dl.train_batches_per_epoch * opts.epoch))
       beg_t = timeit.default_timer()
 
       # Model's placeholders
@@ -223,7 +221,7 @@ def train(model, dl):
         model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
         # TODO The sequence length should be the actual seq_length of each sequence?
         model.seq_length  : int(dl.max_seq_length) * np.ones(
-          (model.batch_size,), dtype=np.int32)}
+            (model.batch_size,), dtype=np.int32)}
 
       logger.debug('feed_dict - encoder_inputs')
       for i, enc_in in enumerate(model.encoder_inputs):
@@ -245,20 +243,20 @@ def train(model, dl):
       #   [model.loss, model.train_op, model.enc_state, merged],
       #   feed_dict=feed_dict)
       tr_loss, _, enc_state = sess.run(
-        [model.loss, model.train_op, model.enc_state], feed_dict=feed_dict)
+          [model.loss, model.train_op, model.enc_state], feed_dict=feed_dict)
 
       logger.debug('Append batch timings')
       batch_timings.append(timeit.default_timer() - beg_t)
 
       # Print batch info
       logger.info(
-        'Batch {}/{} (epoch {}) loss {}, time/batch (s) {}\r'.format(
-          count,
-          opts.epoch * dl.train_batches_per_epoch,  # Total num. of batches
-          curr_epoch + 1,
-          tr_loss,
-          np.mean(
-            batch_timings)))
+          'Batch {}/{} (epoch {}) loss {}, time/batch (s) {}\r'.format(
+              count,
+              opts.epoch * dl.train_batches_per_epoch,  # Total num. of batches
+              curr_epoch + 1,
+              tr_loss,
+              np.mean(
+                  batch_timings)))
 
       if batch_idx % opts.save_every == 0:
         # train_writer.add_summary(summary, count)
@@ -273,7 +271,7 @@ def train(model, dl):
         va_loss = np.mean(evaluate(sess, model, dl, curr_epoch))
         if va_loss < best_val_loss:
           logger.info(
-            'Val loss improved {} --> {}'.format(best_val_loss, va_loss))
+              'Val loss improved {} --> {}'.format(best_val_loss, va_loss))
           logger.debug('Update the best score')
           best_val_loss = va_loss
           curr_patience = opts.patience
@@ -281,20 +279,20 @@ def train(model, dl):
           model.save(sess, best_checkpoint_file)
         else:
           logger.info(
-            'Val loss did not improve, patience: {}'.format(curr_patience))
+              'Val loss did not improve, patience: {}'.format(curr_patience))
 
           curr_patience -= 1
           if model.optimizer == 'sgd':
             # if we have SGD optimizer, half the learning rate
             curr_lr = sess.run(model.curr_lr)
             logger.info(
-              'Halving lr {} --> {} in SGD'.format(curr_lr, 0.5 * curr_lr))
+                'Halving lr {} --> {} in SGD'.format(curr_lr, 0.5 * curr_lr))
             sess.run(tf.assign(model.curr_lr, curr_lr * .5))
           if curr_patience == 0:
             logger.info(
-              'Out of patience ({}) at epoch {} with tr_loss {} and '
-              'best_val_loss {}'.format(
-                opts.patience, curr_epoch, tr_loss, best_val_loss))
+                'Out of patience ({}) at epoch {} with tr_loss {} and '
+                'best_val_loss {}'.format(
+                    opts.patience, curr_epoch, tr_loss, best_val_loss))
             break
 
       batch_idx += 1
@@ -315,7 +313,7 @@ def test(model, dl):
   batch_idx = 0
   batch_timings = []
   te_losses = []
-  m_test_loss = None
+  # m_test_loss = None
 
   # Start TF session
   with tf.Session() as sess:
@@ -335,7 +333,7 @@ def test(model, dl):
           model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
           # TODO Seq_length should be the actual seq_length of each sequence?
           model.seq_length  : int(dl.max_seq_length) * np.ones(
-            (model.batch_size,), dtype=np.int32)}
+              (model.batch_size,), dtype=np.int32)}
 
         logger.debug('feed_dict - encoder_inputs')
         for i, enc_in in enumerate(model.encoder_inputs):
@@ -347,7 +345,7 @@ def test(model, dl):
         logger.debug('Roll decoder inputs and add GO symbol')
         trg_batch = np.roll(trg_batch, 1, axis=1)
         trg_batch[:, 0, :] = np.zeros(
-          (model.batch_size, model.parameters_length))
+            (model.batch_size, model.parameters_length))
 
         logger.debug('feed_dict - decoder_inputs')
         for i, dec_in in enumerate(model.decoder_inputs):
