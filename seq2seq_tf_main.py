@@ -13,6 +13,7 @@ import argparse
 import gzip
 import os
 import timeit
+from datetime import datetime
 from sys import version_info
 
 import numpy as np
@@ -190,6 +191,8 @@ def train(model, dl):
     curr_epoch = 0
     count = 0
     batch_timings = []
+    tr_losses = []
+    val_losses = []
 
     logger.debug('Initialize TF variables')
     try:
@@ -258,6 +261,8 @@ def train(model, dl):
               np.mean(
                   batch_timings)))
 
+      tr_losses.append(tr_loss)
+
       if batch_idx % opts.save_every == 0:
         # train_writer.add_summary(summary, count)
         logger.info('Save checkpoint')
@@ -269,6 +274,8 @@ def train(model, dl):
 
         logger.debug('Evaluate epoch')
         va_loss = np.mean(evaluate(sess, model, dl, curr_epoch))
+        val_losses.append(va_loss)
+
         if va_loss < best_val_loss:
           logger.info(
               'Val loss improved {} --> {}'.format(best_val_loss, va_loss))
@@ -277,6 +284,7 @@ def train(model, dl):
           curr_patience = opts.patience
           best_checkpoint_file = os.path.join(log_dir, 'best_model.ckpt')
           model.save(sess, best_checkpoint_file)
+
         else:
           logger.info(
               'Val loss did not improve, patience: {}'.format(curr_patience))
@@ -300,6 +308,18 @@ def train(model, dl):
       if curr_epoch >= opts.epoch:
         logger.info('Finished epochs -> BREAK')
         break
+
+    # Save loss values
+    np.savetxt(
+        os.path.join(
+            log_dir,
+            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 'tr_losses.csv'),
+        tr_losses)
+    np.savetxt(
+        os.path.join(
+            log_dir,
+            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 'val_losses.csv'),
+        val_losses)
 
 
 logger.debug('Defined train')
@@ -370,6 +390,13 @@ def test(model, dl):
       m_test_loss = np.mean(te_losses)
       print('** Mean test loss {} **'.format(m_test_loss))
 
+      # Save loss values
+      np.savetxt(
+        os.path.join(
+            os.path.join(opts.save_path, 'tf_train'),
+            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 'tr_losses.csv'),
+        te_losses)
+      
       return m_test_loss
 
 

@@ -95,12 +95,14 @@ class Seq2Seq(object):
 
     self.train_op = self.opt.apply_gradients(zip(grads, tvars))
 
-  def build_multirnn_block(self, rnn_size, rnn_layers, cell_type):
+  def build_multirnn_block(self, rnn_size, rnn_layers, cell_type,
+                           activation=tf.tanh):
     self.logger.debug('Build RNN block')
     if cell_type == 'gru':
-      cell = tf.contrib.rnn.GRUCell(rnn_size)
+      cell = tf.contrib.rnn.GRUCell(rnn_size, activation=activation)
     elif cell_type == 'lstm':
-      cell = tf.contrib.rnn.BasicLSTMCell(rnn_size, state_is_tuple=True)
+      cell = tf.contrib.rnn.BasicLSTMCell(rnn_size, state_is_tuple=True,
+                                          activation=activation)
     else:
       raise ValueError("The selected cell type '%s' is not supported"
                        % cell_type)
@@ -147,7 +149,8 @@ class Seq2Seq(object):
 
     dec_cell = self.build_multirnn_block(self.rnn_size,
                                          self.dec_rnn_layers,
-                                         self.cell_type)
+                                         self.cell_type,
+                                         activation=tf.sigmoid)
     if self.dropout > 0:
       # print('Applying dropout {} to decoder'.format(self.dropout))
       self.logger.info('Applying dropout {} to decoder'.format(self.dropout))
