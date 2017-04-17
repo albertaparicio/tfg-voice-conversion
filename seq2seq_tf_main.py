@@ -53,7 +53,7 @@ if __name__ == '__main__':
   parser.add_argument('--rnn_size', type=int, default=256)
   parser.add_argument('--cell_type', type=str, default="lstm")
   parser.add_argument('--batch_size', type=int, default=20)
-  parser.add_argument('--epoch', type=int, default=100)
+  parser.add_argument('--epoch', type=int, default=30)
   parser.add_argument('--learning_rate', type=float, default=0.001)
   parser.add_argument('--dropout', type=float, default=0.5)
   parser.add_argument('--optimizer', type=str, default="adam")
@@ -313,12 +313,12 @@ def train(model, dl):
     np.savetxt(
         os.path.join(
             log_dir,
-            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 'tr_losses.csv'),
+            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '_tr_losses.csv'),
         tr_losses)
     np.savetxt(
         os.path.join(
             log_dir,
-            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 'val_losses.csv'),
+            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '_val_losses.csv'),
         val_losses)
 
 
@@ -394,7 +394,7 @@ def test(model, dl):
       np.savetxt(
         os.path.join(
             os.path.join(opts.save_path, 'tf_train'),
-            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 'tr_losses.csv'),
+            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '_te_losses.csv'),
         te_losses)
       
       return m_test_loss
