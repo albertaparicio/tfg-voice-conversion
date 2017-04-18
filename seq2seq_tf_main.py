@@ -18,6 +18,7 @@ from sys import version_info
 
 import numpy as np
 import tensorflow as tf
+from ahoproc_tools import error_metrics
 from tfglib.utils import init_logger
 
 from seq2seq_tf_model import DataLoader, Seq2Seq
@@ -43,6 +44,7 @@ if __name__ == '__main__':
   parser.add_argument('--val_fraction', type=float, default=0.25)
   parser.add_argument('--save-h5', dest='save_h5', action='store_true',
                       help='Save dataset to .h5 file')
+  parser.add_argument('--max_seq_length', type=int, default=500)
   parser.add_argument('--params_len', type=int, default=44)
   parser.add_argument('--patience', type=int, default=4,
                       help="Patience epochs to do validation, if validation "
@@ -66,6 +68,7 @@ if __name__ == '__main__':
   parser.add_argument('--no-test', dest='do_test',
                       action='store_false', help='Flag to test or not.')
   parser.add_argument('--save_path', type=str, default="training_results")
+  parser.add_argument('--pred_path', type=str, default="tf_predicted")
   parser.add_argument('--log', type=str, default="INFO")
 
   parser.set_defaults(do_train=True, do_test=True, save_h5=False)
@@ -76,7 +79,7 @@ if __name__ == '__main__':
   logger = init_logger(name=__name__, level=opts.log)
 
   logger.debug('Parsed arguments')
-  if not os.path.exists(opts.save_path):
+  if not os.path.exists(os.path.join(opts.save_path, 'tf_train')):
     os.makedirs(os.path.join(opts.save_path, 'tf_train'))
   # save config
   with gzip.open(os.path.join(opts.save_path, 'tf_train', 'config.pkl.gz'),
@@ -94,8 +97,8 @@ def main(args):
     logger.info('Training')
 
     logger.debug('Initialize training DataLoader')
-    dl = DataLoader(args, logger_level=args.log, max_seq_length=500)
-    # dl = DataLoader(args, logger_level=opts.log)
+    dl = DataLoader(args, logger_level=args.log,
+                    max_seq_length=args.max_seq_length)
 
     logger.debug('Initialize model')
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
@@ -109,8 +112,8 @@ def main(args):
     tf.reset_default_graph()
 
     logger.debug('Initialize test DataLoader')
-    dl = DataLoader(args, test=True, logger_level=args.log, max_seq_length=500)
-    # dl = DataLoader(args, test=True, logger_level=opts.log)
+    dl = DataLoader(args, test=True, logger_level=args.log,
+                    max_seq_length=args.max_seq_length)
 
     logger.debug('Initialize model')
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
@@ -222,7 +225,6 @@ def train(model, dl):
       feed_dict = {
         model.gtruth      : trg_batch[:, :int(model.gtruth.get_shape()[1]), :],
         model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
-        # TODO The sequence length should be the actual seq_length of each sequence?
         model.seq_length  : int(dl.max_seq_length) * np.ones(
             (model.batch_size,), dtype=np.int32)}
 
@@ -351,7 +353,6 @@ def test(model, dl):
           model.gtruth      : trg_batch[:, :int(model.gtruth.get_shape()[1]),
                               :],
           model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
-          # TODO Seq_length should be the actual seq_length of each sequence?
           model.seq_length  : int(dl.max_seq_length) * np.ones(
               (model.batch_size,), dtype=np.int32)}
 
@@ -379,7 +380,72 @@ def test(model, dl):
         # Append times
         batch_timings.append(timeit.default_timer() - beg_t)
 
-        # TODO Decode predictions?
+        # Decode predictions
+        # predictions.shape -> (batch_size, max_seq_length, params_len)
+        # Save original U/V flags to save them to file
+        raw_uv_flags = predictions[:, :, 42]
+
+        # Round U/V flags
+        predictions[:, :, 42] = np.round(predictions[:, :, 42])
+
+        # Unscale parameters
+        for i in range(predictions.shape[0]):
+          src_spk_index = int(src_batch[i, 0, 44])
+          trg_spk_index = int(src_batch[i, 0, 45])
+
+          src_spk_max = dl.train_speakers_max[src_spk_index, :]
+          src_spk_min = dl.train_speakers_min[src_spk_index, :]
+
+          predictions[i, :, 0:42] = predictions[i, :, 0:42] * (
+            src_spk_max - src_spk_min) + src_spk_min
+
+          # Apply U/V flag to lf0 and mvf params
+          predictions[i, :, 40][predictions[i, :, 42] == 0] = -1e10
+          predictions[i, :, 41][predictions[i, :, 42] == 0] = 1000
+
+          # Get speakers names
+          src_spk_name = dl.s2s_datatable.speakers[src_spk_index]
+          trg_spk_name = dl.s2s_datatable.speakers[trg_spk_index]
+
+          # Make sure the save directory exists
+          tf_pred_path = os.path.join(opts.test_data_path, opts.pred_path)
+
+          if not os.path.exists(
+              os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name)):
+            os.makedirs(
+                os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name))
+
+          # Prepare filename
+          # TODO Get filename from datatable
+          f_name = format(i + 1, '0' + str(
+              max(5, len(str(dl.src_test_data.shape[0])))))
+
+          # Save predictions to files
+          np.savetxt(
+              os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
+                           f_name + '.vf.dat'),
+              predictions[i, :, 41]
+              )
+          np.savetxt(
+              os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
+                           f_name + '.lf0.dat'),
+              predictions[i, :, 40]
+              )
+          np.savetxt(
+              os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
+                           f_name + '.mcp.dat'),
+              predictions[i, :, 0:40],
+              delimiter='\t'
+              )
+          np.savetxt(
+              os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
+                           f_name + '.uv.dat'),
+              raw_uv_flags[i, :]
+              )
+          # Display MCD
+          print('MCD = {} dB'.format(
+              error_metrics.MCD(src_batch[i, :, 0:40],
+                                predictions[i, :, 0:40])))
 
         # Increase batch index
         if batch_idx >= dl.test_batches_per_epoch:
@@ -392,11 +458,11 @@ def test(model, dl):
 
       # Save loss values
       np.savetxt(
-        os.path.join(
-            os.path.join(opts.save_path, 'tf_train'),
-            datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '_te_losses.csv'),
-        te_losses)
-      
+          os.path.join(
+              os.path.join(opts.save_path, 'tf_train'),
+              datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '_te_losses.csv'),
+          te_losses)
+
       return m_test_loss
 
 

@@ -159,11 +159,11 @@ class Seq2Seq(object):
 
     dec_cell = tf.contrib.rnn.OutputProjectionWrapper(dec_cell,
                                                       self.parameters_length)
-    if not self.infer:
+    if self.infer:
+      loop_function = None
+    else:
       def loop_function(prev, _):
         return prev
-    else:
-      loop_function = None
 
     # First calculate a concatenation of encoder outputs to put attention on.
     top_states = [
@@ -243,7 +243,6 @@ class DataLoader(object):
        self.train_speakers, self.train_speakers_max, self.train_speakers_min,
        self.max_seq_length) = self.load_dataset(
           args.train_out_file,
-          args.test_out_file,
           args.save_h5,
           test=test
           )
@@ -263,8 +262,7 @@ class DataLoader(object):
        train_speakers, train_speakers_max, train_speakers_min,
        self.max_seq_length) = self.load_dataset(
           args.train_out_file,
-          args.test_out_file,
-          args.save_h5,
+          args.save_h5
           )
 
       self.logger.debug('Split into training and validation')
@@ -308,7 +306,7 @@ class DataLoader(object):
           np.floor(self.src_valid_data.shape[0] / self.batch_size)
           )
 
-  def load_dataset(self, train_out_file, test_out_file, save_h5, test=False):
+  def load_dataset(self, train_out_file, save_h5, test=False):
     import h5py
 
     self.logger.debug('Load test dataset')
