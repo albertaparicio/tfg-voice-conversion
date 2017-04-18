@@ -225,7 +225,7 @@ class Seq2Seq(object):
 
 class DataLoader(object):
   # TODO Finish this class and move it to a new file
-  def __init__(self, args, test=False, max_seq_length=None,
+  def __init__(self, args, test=False, max_seq_length=None, shortseq=True,
                logger_level='INFO'):
     self.logger = init_logger(name=__name__, level=logger_level)
 
@@ -235,13 +235,13 @@ class DataLoader(object):
     if test:
       self.s2s_datatable = s2s.Seq2SeqDatatable(args.test_data_path,
                                                 args.test_out_file,
-                                                shortseq=True,
+                                                shortseq=shortseq,
                                                 max_seq_length=int(
                                                     max_seq_length))
 
       (self.src_test_data, self.trg_test_data, self.trg_test_masks_f,
        self.train_speakers, self.train_speakers_max, self.train_speakers_min,
-       self.max_seq_length) = self.load_dataset(
+       dataset_max_seq_length) = self.load_dataset(
           args.train_out_file,
           args.save_h5,
           test=test
@@ -254,13 +254,13 @@ class DataLoader(object):
     else:
       self.s2s_datatable = s2s.Seq2SeqDatatable(args.train_data_path,
                                                 args.train_out_file,
-                                                shortseq=True,
+                                                shortseq=shortseq,
                                                 max_seq_length=int(
                                                     max_seq_length))
 
       (src_datatable, trg_datatable, trg_masks,
        train_speakers, train_speakers_max, train_speakers_min,
-       self.max_seq_length) = self.load_dataset(
+       dataset_max_seq_length) = self.load_dataset(
           args.train_out_file,
           args.save_h5
           )
@@ -305,6 +305,11 @@ class DataLoader(object):
       self.valid_batches_per_epoch = int(
           np.floor(self.src_valid_data.shape[0] / self.batch_size)
           )
+
+    if shortseq:
+      self.max_seq_length = max_seq_length
+    else:
+      self.max_seq_length = dataset_max_seq_length
 
   def load_dataset(self, train_out_file, save_h5, test=False):
     import h5py
