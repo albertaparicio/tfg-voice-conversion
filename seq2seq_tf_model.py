@@ -19,6 +19,28 @@ from tfglib.seq2seq_normalize import maxmin_scaling
 from tfglib.utils import init_logger
 
 
+################################################################################
+# Code from santi-pdp @ GitHub
+# https://github.com/santi-pdp/word2phone/blob/master/model.py
+
+def scalar_summary(name, x):
+  try:
+    summ = tf.summary.scalar(name, x)
+  except AttributeError:
+    summ = tf.scalar_summary(name, x)
+  return summ
+
+
+def histogram_summary(name, x):
+  try:
+    summ = tf.summary.histogram(name, x)
+  except AttributeError:
+    summ = tf.histogram_summary(name, x)
+  return summ
+
+
+################################################################################
+
 class Seq2Seq(object):
   # TODO Figure out suitable values for attention length and size
   def __init__(self, enc_rnn_layers, dec_rnn_layers, rnn_size,
@@ -67,18 +89,32 @@ class Seq2Seq(object):
       tf.placeholder(tf.float32, [batch_size, self.parameters_length]
                      ) for _ in range(seq_length)]
 
+    # Encoder inputs summaries
+    split_enc_inputs = tf.split(tf.stack(self.encoder_inputs, axis=1),
+                                self.parameters_length, axis=2,
+                                name='encoder_parameter')
+    self.enc_inputs_summaries = []
+    [self.enc_inputs_summaries.append(
+        histogram_summary(split_tensor.name, split_tensor)) for split_tensor in
+      split_enc_inputs]
+
     self.decoder_inputs = [
       tf.placeholder(tf.float32, [batch_size, self.parameters_length]
                      ) for _ in range(seq_length)]
 
     # To be assigned a value later
     self.enc_state, self.encoder_vars, self.enc_zero = None, None, None
+    self.encoder_state_summaries = None
+    self.decoder_outputs_summaries = []
 
     self.prediction = self.inference()
 
     self.loss = self.mse_loss(self.gtruth, self.gtruth_masks, self.prediction)
     self.val_loss = self.mse_loss(self.gtruth, self.gtruth_masks,
                                   self.prediction)
+
+    self.loss_summary = scalar_summary('loss', self.loss)
+    self.val_loss_summary = scalar_summary('val_loss', self.val_loss)
 
     tvars = tf.trainable_variables()
     grads = []
@@ -141,16 +177,18 @@ class Seq2Seq(object):
 
     # This op is created to visualize the thought vectors
     self.enc_state = enc_state
+
     self.logger.info(
         'enc out (len {}) tensors shape: {}'.format(
             len(enc_out), enc_out[0].get_shape()
             ))
     # print('enc out tensor shape: ', enc_out.get_shape())
 
+    self.encoder_state_summaries = histogram_summary('encoder_state', enc_state)
+
     dec_cell = self.build_multirnn_block(self.rnn_size,
                                          self.dec_rnn_layers,
-                                         self.cell_type,
-                                         activation=tf.sigmoid)
+                                         self.cell_type)
     if self.dropout > 0:
       # print('Applying dropout {} to decoder'.format(self.dropout))
       self.logger.info('Applying dropout {} to decoder'.format(self.dropout))
@@ -173,15 +211,25 @@ class Seq2Seq(object):
 
     self.logger.debug('Initialize decoder')
     dec_out, dec_state = attention_decoder(
-        self.decoder_inputs, enc_state, cell=dec_cell,
+        self.decoder_inputs, enc_state, cell=dec_cell,  # output_size=
         attention_states=attention_states, loop_function=loop_function
         )
+
+    # Apply sigmoid activation to decoder outputs
+    dec_out = tf.sigmoid(dec_out)
 
     # print('dec_state shape: ', dec_state[0].get_shape())
     # merge outputs into a tensor and transpose to be [B, seq_length, out_dim]
     dec_outputs = tf.transpose(tf.stack(dec_out), [1, 0, 2])
     # print('dec outputs shape: ', dec_outputs.get_shape())
     self.logger.info('dec outputs shape: {}'.format(dec_outputs.get_shape()))
+
+    # Decoder outputs summaries
+    split_dec_out = tf.split(dec_outputs, self.parameters_length, axis=2,
+                             name='decoder_parameter')
+    [self.decoder_outputs_summaries.append(
+        histogram_summary(split_tensor.name, split_tensor)) for split_tensor in
+      split_dec_out]
 
     self.encoder_vars = {}
     for tvar in tf.trainable_variables():
@@ -211,7 +259,7 @@ class Seq2Seq(object):
     if os.path.exists(os.path.join(save_path, 'best_model.ckpt')):
       ckpt_name = os.path.join(save_path, 'best_model.ckpt')
       print('Loading checkpoint {}...'.format(ckpt_name))
-      self.saver.restore(sess, os.path.join(save_path, ckpt_name))
+      self.saver.restore(sess, os.path.join(ckpt_name))
     else:
       ckpt = tf.train.get_checkpoint_state(save_path)
       if ckpt and ckpt.model_checkpoint_path:

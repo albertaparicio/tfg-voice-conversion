@@ -200,14 +200,20 @@ def train(model, dl):
     logger.debug('Initialize TF variables')
     try:
       tf.global_variables_initializer().run()
-      # merged = tf.summary.merge_all()
+      merged = tf.summary.merge_all()
     except AttributeError:
       # Backward compatibility
       tf.initialize_all_variables().run()
-      # merged = tf.merge_all_summaries()
+      merged = tf.merge_all_summaries()
 
-    log_dir = os.path.join(opts.save_path, 'tf_train')
-    # train_writer = tf.summary.FileWriter(log_dir, sess.graph)
+    results_dir = os.path.join(opts.save_path, 'tf_train')
+    log_dir = os.path.join(results_dir, 'tensorboard')
+
+    if not os.path.exists(log_dir):
+      os.makedirs(log_dir)
+
+    train_writer = tf.summary.FileWriter(log_dir, sess.graph)
+
     best_val_loss = 10e6
     curr_patience = opts.patience
     logger.debug('Defined constants')
@@ -244,11 +250,9 @@ def train(model, dl):
         feed_dict[dec_in] = trg_batch[:, i, :]
 
       logger.debug('sess.run')
-      # tr_loss, _, enc_state, summary = sess.run(
-      #   [model.loss, model.train_op, model.enc_state, merged],
-      #   feed_dict=feed_dict)
-      tr_loss, _, enc_state = sess.run(
-          [model.loss, model.train_op, model.enc_state], feed_dict=feed_dict)
+      tr_loss, _, enc_state, summary = sess.run(
+          [model.loss, model.train_op, model.enc_state, merged],
+          feed_dict=feed_dict)
 
       logger.debug('Append batch timings')
       batch_timings.append(timeit.default_timer() - beg_t)
@@ -266,9 +270,9 @@ def train(model, dl):
       tr_losses.append(tr_loss)
 
       if batch_idx % opts.save_every == 0:
-        # train_writer.add_summary(summary, count)
+        train_writer.add_summary(summary, count)
         logger.info('Save checkpoint')
-        checkpoint_file = os.path.join(log_dir, 'model.ckpt')
+        checkpoint_file = os.path.join(results_dir, 'model.ckpt')
         model.save(sess, checkpoint_file, count)
       if batch_idx >= dl.train_batches_per_epoch:
         curr_epoch += 1
@@ -284,7 +288,7 @@ def train(model, dl):
           logger.debug('Update the best score')
           best_val_loss = va_loss
           curr_patience = opts.patience
-          best_checkpoint_file = os.path.join(log_dir, 'best_model.ckpt')
+          best_checkpoint_file = os.path.join(results_dir, 'best_model.ckpt')
           model.save(sess, best_checkpoint_file)
 
         else:
@@ -314,12 +318,12 @@ def train(model, dl):
     # Save loss values
     np.savetxt(
         os.path.join(
-            log_dir,
+            results_dir,
             datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '_tr_losses.csv'),
         tr_losses)
     np.savetxt(
         os.path.join(
-            log_dir,
+            results_dir,
             datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '_val_losses.csv'),
         val_losses)
 
