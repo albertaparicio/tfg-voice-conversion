@@ -82,6 +82,15 @@ class Seq2Seq(object):
                                  [self.batch_size,
                                   seq_length,
                                   self.parameters_length])
+
+    # Ground truth summaries
+    split_gtruth = tf.split(self.gtruth, self.parameters_length, axis=2, name='gtruth_parameter')
+
+    self.gtruth_summaries = []
+    [self.gtruth_summaries.append(
+        histogram_summary(split_tensor.name, split_tensor)) for split_tensor in
+      split_gtruth]
+
     self.gtruth_masks = tf.placeholder(tf.float32,
                                        [self.batch_size, seq_length])
 

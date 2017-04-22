@@ -56,7 +56,7 @@ if __name__ == '__main__':
   parser.add_argument('--cell_type', type=str, default="lstm")
   parser.add_argument('--batch_size', type=int, default=20)
   parser.add_argument('--epoch', type=int, default=30)
-  parser.add_argument('--learning_rate', type=float, default=0.001)
+  parser.add_argument('--learning_rate', type=float, default=0.0005)
   parser.add_argument('--dropout', type=float, default=0.5)
   parser.add_argument('--optimizer', type=str, default="adam")
   parser.add_argument('--clip_norm', type=float, default=5)
