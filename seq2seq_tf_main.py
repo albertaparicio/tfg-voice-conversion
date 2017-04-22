@@ -62,7 +62,7 @@ if __name__ == '__main__':
   parser.add_argument('--clip_norm', type=float, default=5)
   parser.add_argument('--attn_length', type=int, default=500)
   parser.add_argument('--attn_size', type=int, default=100)
-  parser.add_argument('--save_every', type=int, default=200)
+  parser.add_argument('--save_every', type=int, default=10)
   parser.add_argument('--no-train', dest='do_train',
                       action='store_false', help='Flag to train or not.')
   parser.add_argument('--no-test', dest='do_test',
