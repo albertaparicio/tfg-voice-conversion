@@ -385,6 +385,8 @@ def test(model, dl):
         batch_timings.append(timeit.default_timer() - beg_t)
 
         # Decode predictions
+        # TODO Remove padding
+
         # predictions.shape -> (batch_size, max_seq_length, params_len)
         # Save original U/V flags to save them to file
         raw_uv_flags = predictions[:, :, 42]
