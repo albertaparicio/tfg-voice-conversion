@@ -28,5 +28,5 @@ CPU_CORES=16
 MEM='64G'
 # BATCH_SIZE=10
 
-echo "srun -p $PARTITION -c$CPU_CORES --mem=$MEM --gres=gpu:1 python seq2seq_tf_main.py $*"
-srun -p $PARTITION -c$CPU_CORES --mem=$MEM --gres=gpu:1 python seq2seq_tf_main.py "$*"
+# echo "srun -p $PARTITION -c$CPU_CORES --mem=$MEM --gres=gpu:1 python seq2seq_tf_main.py $*"
+srun -p $PARTITION -c$CPU_CORES --mem=$MEM --gres=gpu:1 python seq2seq_tf_main.py --no-train --save-h5
