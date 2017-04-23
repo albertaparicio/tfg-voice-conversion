@@ -84,7 +84,8 @@ class Seq2Seq(object):
                                   self.parameters_length])
 
     # Ground truth summaries
-    split_gtruth = tf.split(self.gtruth, self.parameters_length, axis=2, name='gtruth_parameter')
+    split_gtruth = tf.split(self.gtruth, self.parameters_length, axis=2,
+                            name='gtruth_parameter')
 
     self.gtruth_summaries = []
     [self.gtruth_summaries.append(
@@ -296,8 +297,9 @@ class DataLoader(object):
                                                 max_seq_length=int(
                                                     max_seq_length))
 
-      (self.src_test_data, self.trg_test_data, self.trg_test_masks_f,
-       self.train_speakers, self.train_speakers_max, self.train_speakers_min,
+      (self.src_test_data, self.src_seq_len, self.trg_test_data,
+       self.trg_test_masks_f, self.trg_seq_len, self.train_speakers,
+       self.train_speakers_max, self.train_speakers_min,
        dataset_max_seq_length) = self.load_dataset(
           args.train_out_file,
           args.save_h5,
@@ -315,8 +317,8 @@ class DataLoader(object):
                                                 max_seq_length=int(
                                                     max_seq_length))
 
-      (src_datatable, trg_datatable, trg_masks,
-       train_speakers, train_speakers_max, train_speakers_min,
+      (src_datatable, self.src_seq_len, trg_datatable, trg_masks,
+       self.trg_seq_len, train_speakers, train_speakers_max, train_speakers_min,
        dataset_max_seq_length) = self.load_dataset(
           args.train_out_file,
           args.save_h5
@@ -377,8 +379,10 @@ class DataLoader(object):
 
       (src_datatable,
        src_masks,
+       src_seq_len,
        trg_datatable,
        trg_masks,
+       trg_seq_len,
        train_speakers_max,
        train_speakers_min
        ) = self.s2s_datatable.seq2seq_save_datatable()
@@ -389,8 +393,10 @@ class DataLoader(object):
       self.logger.info('Load parameters')
       (src_datatable,
        src_masks,
+       src_seq_len,
        trg_datatable,
        trg_masks,
+       trg_seq_len,
        train_speakers_max,
        train_speakers_min
        ) = self.s2s_datatable.seq2seq2_load_datatable()
@@ -426,7 +432,7 @@ class DataLoader(object):
           train_speakers_min
           )
 
-    return (src_datatable, trg_datatable, trg_masks,
+    return (src_datatable, src_seq_len, trg_datatable, trg_masks, trg_seq_len,
             train_speakers, train_speakers_max, train_speakers_min,
             self.s2s_datatable.max_seq_length)
 
@@ -458,7 +464,9 @@ class DataLoader(object):
       src_batch = data_dict['src_data'][
                   batch_id * self.batch_size:(batch_id + 1) * self.batch_size,
                   :, :]
-
+      src_batch_seq_len = self.src_seq_len[
+                          batch_id * self.batch_size:
+                          (batch_id + 1) * self.batch_size]
       trg_batch = data_dict['trg_data'][
                   batch_id * self.batch_size:(batch_id + 1) * self.batch_size,
                   :, :]
@@ -468,4 +476,4 @@ class DataLoader(object):
       batch_id = (batch_id + 1) % data_dict['batches_per_epoch']
 
       self.logger.debug('--> Next batch - Yield <--')
-      yield (src_batch, trg_batch, trg_mask)
+      yield (src_batch, src_batch_seq_len, trg_batch, trg_mask)

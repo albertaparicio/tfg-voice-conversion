@@ -134,7 +134,10 @@ def evaluate(sess, model, data_loader, curr_epoch):
   batch_idx = 0
   batch_timings = []
   eval_losses = []
-  for src_batch, trg_batch, trg_mask in data_loader.next_batch(validation=True):
+  for (
+      src_batch, src_batch_seq_len, trg_batch,
+      trg_mask) in data_loader.next_batch(
+      validation=True):
     # if batch_idx == 0:
     #   batches_per_epoch = data_loader.valid_batches_per_epoch
     beg_t = timeit.default_timer()
@@ -144,9 +147,7 @@ def evaluate(sess, model, data_loader, curr_epoch):
     feed_dict = {
       model.gtruth      : trg_batch[:, :int(model.gtruth.get_shape()[1]), :],
       model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
-      # TODO The sequence length should be the seq_length of each sequence?
-      model.seq_length  : int(data_loader.max_seq_length) * np.ones(
-          (model.batch_size,), dtype=np.int32)}
+      model.seq_length  : src_batch_seq_len}
 
     logger.debug('feed_dict - encoder_inputs')
     for i, enc_in in enumerate(model.encoder_inputs):
@@ -219,7 +220,7 @@ def train(model, dl):
     logger.debug('Defined constants')
 
     logger.debug('Start batch loop')
-    for src_batch, trg_batch, trg_mask in dl.next_batch():
+    for src_batch, src_batch_seq_len, trg_batch, trg_mask in dl.next_batch():
       if curr_epoch == 0 and batch_idx == 0:
         logger.info('Batches per epoch: {}'.format(dl.train_batches_per_epoch))
         logger.info(
@@ -231,8 +232,7 @@ def train(model, dl):
       feed_dict = {
         model.gtruth      : trg_batch[:, :int(model.gtruth.get_shape()[1]), :],
         model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
-        model.seq_length  : int(dl.max_seq_length) * np.ones(
-            (model.batch_size,), dtype=np.int32)}
+        model.seq_length  : src_batch_seq_len}
 
       logger.debug('feed_dict - encoder_inputs')
       for i, enc_in in enumerate(model.encoder_inputs):
@@ -291,23 +291,23 @@ def train(model, dl):
           best_checkpoint_file = os.path.join(results_dir, 'best_model.ckpt')
           model.save(sess, best_checkpoint_file)
 
-#         else:
-          # logger.info(
-              # 'Val loss did not improve, patience: {}'.format(curr_patience))
-
-          # curr_patience -= 1
-          # if model.optimizer == 'sgd':
-            # # if we have SGD optimizer, half the learning rate
-            # curr_lr = sess.run(model.curr_lr)
-            # logger.info(
-                # 'Halving lr {} --> {} in SGD'.format(curr_lr, 0.5 * curr_lr))
-            # sess.run(tf.assign(model.curr_lr, curr_lr * .5))
-          # if curr_patience == 0:
-            # logger.info(
-                # 'Out of patience ({}) at epoch {} with tr_loss {} and '
-                # 'best_val_loss {}'.format(
-                    # opts.patience, curr_epoch, tr_loss, best_val_loss))
-#             break
+        # else:
+        #   logger.info(
+        #       'Val loss did not improve, patience: {}'.format(curr_patience))
+        #
+        #   curr_patience -= 1
+        #   if model.optimizer == 'sgd':
+        #     # if we have SGD optimizer, half the learning rate
+        #     curr_lr = sess.run(model.curr_lr)
+        #     logger.info(
+        #         'Halving lr {} --> {} in SGD'.format(curr_lr, 0.5 * curr_lr))
+        #     sess.run(tf.assign(model.curr_lr, curr_lr * .5))
+        #   if curr_patience == 0:
+        #     logger.info(
+        #         'Out of patience ({}) at epoch {} with tr_loss {} and '
+        #         'best_val_loss {}'.format(
+        #             opts.patience, curr_epoch, tr_loss, best_val_loss))
+        #     break
 
       batch_idx += 1
       count += 1
@@ -348,7 +348,8 @@ def test(model, dl):
       logger.info('Loaded model successfully!')
 
       # DataLoader.next_batch
-      for src_batch, trg_batch, trg_mask in dl.next_batch(test=True):
+      for (src_batch, src_batch_seq_len, trg_batch, trg_mask) in dl.next_batch(
+          test=True):
         beg_t = timeit.default_timer()
 
         # Fill feed_dict with test data
@@ -357,8 +358,7 @@ def test(model, dl):
           model.gtruth      : trg_batch[:, :int(model.gtruth.get_shape()[1]),
                               :],
           model.gtruth_masks: trg_mask[:, :int(model.gtruth.get_shape()[1])],
-          model.seq_length  : int(dl.max_seq_length) * np.ones(
-              (model.batch_size,), dtype=np.int32)}
+          model.seq_length  : src_batch_seq_len}
 
         logger.debug('feed_dict - encoder_inputs')
         for i, enc_in in enumerate(model.encoder_inputs):
