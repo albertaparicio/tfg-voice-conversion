@@ -291,23 +291,23 @@ def train(model, dl):
           best_checkpoint_file = os.path.join(results_dir, 'best_model.ckpt')
           model.save(sess, best_checkpoint_file)
 
-        else:
-          logger.info(
-              'Val loss did not improve, patience: {}'.format(curr_patience))
+#         else:
+          # logger.info(
+              # 'Val loss did not improve, patience: {}'.format(curr_patience))
 
-          curr_patience -= 1
-          if model.optimizer == 'sgd':
-            # if we have SGD optimizer, half the learning rate
-            curr_lr = sess.run(model.curr_lr)
-            logger.info(
-                'Halving lr {} --> {} in SGD'.format(curr_lr, 0.5 * curr_lr))
-            sess.run(tf.assign(model.curr_lr, curr_lr * .5))
-          if curr_patience == 0:
-            logger.info(
-                'Out of patience ({}) at epoch {} with tr_loss {} and '
-                'best_val_loss {}'.format(
-                    opts.patience, curr_epoch, tr_loss, best_val_loss))
-            break
+          # curr_patience -= 1
+          # if model.optimizer == 'sgd':
+            # # if we have SGD optimizer, half the learning rate
+            # curr_lr = sess.run(model.curr_lr)
+            # logger.info(
+                # 'Halving lr {} --> {} in SGD'.format(curr_lr, 0.5 * curr_lr))
+            # sess.run(tf.assign(model.curr_lr, curr_lr * .5))
+          # if curr_patience == 0:
+            # logger.info(
+                # 'Out of patience ({}) at epoch {} with tr_loss {} and '
+                # 'best_val_loss {}'.format(
+                    # opts.patience, curr_epoch, tr_loss, best_val_loss))
+#             break
 
       batch_idx += 1
       count += 1
@@ -404,8 +404,12 @@ def test(model, dl):
             src_spk_max - src_spk_min) + src_spk_min
 
           # Apply U/V flag to lf0 and mvf params
-          predictions[i, :, 40][predictions[i, :, 42] == 0] = -1e10
-          predictions[i, :, 41][predictions[i, :, 42] == 0] = 1000
+          # predictions[i, :, 40][predictions[i, :, 42] == 0] = -1e10
+          # predictions[i, :, 41][predictions[i, :, 42] == 0] = 1000
+
+          # Apply ground truth flags to prediction
+          predictions[i, :, 40][trg_batch[i, :, 42] == 0] = -1e10
+          predictions[i, :, 41][trg_batch[i, :, 42] == 0] = 1000
 
           # Get speakers names
           src_spk_name = dl.s2s_datatable.speakers[src_spk_index]
