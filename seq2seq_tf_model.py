@@ -119,8 +119,8 @@ class Seq2Seq(object):
 
     self.prediction = self.inference()
 
-    self.loss = self.mse_loss(self.gtruth, self.gtruth_masks, self.prediction)
-    self.val_loss = self.mse_loss(self.gtruth, self.gtruth_masks,
+    self.loss = self.mae_loss(self.gtruth, self.gtruth_masks, self.prediction)
+    self.val_loss = self.mae_loss(self.gtruth, self.gtruth_masks,
                                   self.prediction)
 
     self.loss_summary = scalar_summary('loss', self.loss)
@@ -159,11 +159,19 @@ class Seq2Seq(object):
     return cell
 
   def mse_loss(self, gtruth, gtruth_masks, prediction):
+    """Mean squared error loss"""
     # Previous to the computation, the predictions are masked
     self.logger.debug('Compute loss')
     return tf.reduce_mean(tf.squared_difference(gtruth,
                                                 prediction * tf.expand_dims(
                                                     gtruth_masks, -1)))
+
+  def mae_loss(self, gtruth, gtruth_masks, prediction):
+    """Mean absolute error loss"""
+    # Previous to the computation, the predictions are masked
+    self.logger.debug('Compute loss')
+    return tf.reduce_mean(
+      tf.abs((prediction * tf.expand_dims(gtruth_masks, -1)) - gtruth))
 
   def inference(self):
     self.logger.debug('Inference')

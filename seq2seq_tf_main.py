@@ -57,7 +57,7 @@ if __name__ == '__main__':
   parser.add_argument('--batch_size', type=int, default=20)
   parser.add_argument('--epoch', type=int, default=30)
   parser.add_argument('--learning_rate', type=float, default=0.0005)
-  parser.add_argument('--dropout', type=float, default=0.5)
+  parser.add_argument('--dropout', type=float, default=0)
   parser.add_argument('--optimizer', type=str, default="adam")
   parser.add_argument('--clip_norm', type=float, default=5)
   parser.add_argument('--attn_length', type=int, default=500)
