@@ -103,7 +103,8 @@ def main(args):
     logger.debug('Initialize model')
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
                             args.rnn_size, dl.max_seq_length, args.params_len,
-                            batch_size=args.batch_size, logger_level=args.log)
+                            batch_size=args.batch_size, logger_level=args.log,
+                            dropout=args.dropout)
 
     logger.info('Start training')
     train(seq2seq_model, dl)
@@ -119,7 +120,7 @@ def main(args):
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
                             args.rnn_size, dl.max_seq_length, args.params_len,
                             batch_size=args.batch_size, logger_level=args.log,
-                            infer=True)
+                            infer=True, dropout=args.dropout)
 
     test(seq2seq_model, dl)
 
