@@ -171,7 +171,7 @@ class Seq2Seq(object):
     # Previous to the computation, the predictions are masked
     self.logger.debug('Compute loss')
     return tf.reduce_mean(
-      tf.abs((prediction * tf.expand_dims(gtruth_masks, -1)) - gtruth))
+        tf.abs((prediction * tf.expand_dims(gtruth_masks, -1)) - gtruth))
 
   def inference(self):
     self.logger.debug('Inference')
@@ -215,11 +215,12 @@ class Seq2Seq(object):
 
     dec_cell = tf.contrib.rnn.OutputProjectionWrapper(dec_cell,
                                                       self.parameters_length)
+
     if self.infer:
-      loop_function = None
-    else:
       def loop_function(prev, _):
         return prev
+    else:
+      loop_function = None
 
     # First calculate a concatenation of encoder outputs to put attention on.
     top_states = [
@@ -248,6 +249,9 @@ class Seq2Seq(object):
     [self.decoder_outputs_summaries.append(
         histogram_summary(split_tensor.name, split_tensor)) for split_tensor in
       split_dec_out]
+
+    # Separate decoder output into parameters and flags
+    params_in, flags_in = tf.split(dec_outputs, [42, 2], axis=2)
 
     self.encoder_vars = {}
     for tvar in tf.trainable_variables():
