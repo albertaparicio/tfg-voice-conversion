@@ -104,7 +104,7 @@ def main(args):
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
                             args.rnn_size, dl.max_seq_length, args.params_len,
                             batch_size=args.batch_size, logger_level=args.log,
-                            dropout=args.dropout)
+                            dropout=args.dropout, learning_rate=args.learning_rate)
 
     logger.info('Start training')
     train(seq2seq_model, dl)
@@ -415,8 +415,8 @@ def test(model, dl):
           predictions[i, :, 41][trg_batch[i, :, 42] == 0] = 1000
 
           # Get speakers names
-          src_spk_name = dl.s2s_datatable.speakers[src_spk_index]
-          trg_spk_name = dl.s2s_datatable.speakers[trg_spk_index]
+          src_spk_name = dl.s2s_datatable.src_speakers[src_spk_index]
+          trg_spk_name = dl.s2s_datatable.trg_speakers[trg_spk_index]
 
           # Make sure the save directory exists
           tf_pred_path = os.path.join(opts.test_data_path, opts.pred_path)
