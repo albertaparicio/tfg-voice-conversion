@@ -398,12 +398,12 @@ def test(model, dl):
         # Round U/V flags
         predictions[:, :, 42] = np.round(predictions[:, :, 42])
 
-        # TODO Remove padding in prediction
-        masked_pred = mask_data(predictions, trg_mask)
-        predictions = np.ma.filled(masked_pred, fill_value=0.0)
-
         # Unscale parameters
         for i in range(predictions.shape[0]):
+          # TODO Remove padding in prediction
+          masked_pred = mask_data(predictions[i, :, :], trg_mask[i, :, :])
+          predictions = np.ma.filled(masked_pred, fill_value=0.0)
+
           src_spk_index = int(src_batch[i, 0, 44])
           trg_spk_index = int(src_batch[i, 0, 45])
 
@@ -467,6 +467,10 @@ def test(model, dl):
           acc, _, _, _ = error_metrics.AFPR(trg_batch[i, :, 42],
                                             predictions[i, :, 42])
           print('U/V accuracy = {}'.format(acc))
+
+          pitch_rmse = error_metrics.RMSE(trg_batch[i, :, 40],
+                                          predictions[i, :, 40])
+          print('Pitch RMSE = {}'.format(pitch_rmse))
 
         # Increase batch index
         if batch_idx >= dl.test_batches_per_epoch:
