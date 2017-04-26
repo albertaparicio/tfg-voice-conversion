@@ -19,6 +19,7 @@ from sys import version_info
 import numpy as np
 import tensorflow as tf
 from ahoproc_tools import error_metrics
+from tfglib.seq2seq_normalize import mask_data
 from tfglib.utils import init_logger
 
 from seq2seq_tf_model import DataLoader, Seq2Seq
@@ -104,7 +105,8 @@ def main(args):
     seq2seq_model = Seq2Seq(args.enc_rnn_layers, args.dec_rnn_layers,
                             args.rnn_size, dl.max_seq_length, args.params_len,
                             batch_size=args.batch_size, logger_level=args.log,
-                            dropout=args.dropout, learning_rate=args.learning_rate)
+                            dropout=args.dropout,
+                            learning_rate=args.learning_rate)
 
     logger.info('Start training')
     train(seq2seq_model, dl)
@@ -292,23 +294,25 @@ def train(model, dl):
           best_checkpoint_file = os.path.join(results_dir, 'best_model.ckpt')
           model.save(sess, best_checkpoint_file)
 
-        # else:
-        #   logger.info(
-        #       'Val loss did not improve, patience: {}'.format(curr_patience))
-        #
-        #   curr_patience -= 1
-        #   if model.optimizer == 'sgd':
-        #     # if we have SGD optimizer, half the learning rate
-        #     curr_lr = sess.run(model.curr_lr)
-        #     logger.info(
-        #         'Halving lr {} --> {} in SGD'.format(curr_lr, 0.5 * curr_lr))
-        #     sess.run(tf.assign(model.curr_lr, curr_lr * .5))
-        #   if curr_patience == 0:
-        #     logger.info(
-        #         'Out of patience ({}) at epoch {} with tr_loss {} and '
-        #         'best_val_loss {}'.format(
-        #             opts.patience, curr_epoch, tr_loss, best_val_loss))
-        #     break
+          # else:
+          #   logger.info(
+          #       'Val loss did not improve, patience: {}'.format(
+          # curr_patience))
+          #
+          #   curr_patience -= 1
+          #   if model.optimizer == 'sgd':
+          #     # if we have SGD optimizer, half the learning rate
+          #     curr_lr = sess.run(model.curr_lr)
+          #     logger.info(
+          #         'Halving lr {} --> {} in SGD'.format(curr_lr,
+          # 0.5 * curr_lr))
+          #     sess.run(tf.assign(model.curr_lr, curr_lr * .5))
+          #   if curr_patience == 0:
+          #     logger.info(
+          #         'Out of patience ({}) at epoch {} with tr_loss {} and '
+          #         'best_val_loss {}'.format(
+          #             opts.patience, curr_epoch, tr_loss, best_val_loss))
+          #     break
 
       batch_idx += 1
       count += 1
@@ -386,7 +390,6 @@ def test(model, dl):
         batch_timings.append(timeit.default_timer() - beg_t)
 
         # Decode predictions
-        # TODO Remove padding
 
         # predictions.shape -> (batch_size, max_seq_length, params_len)
         # Save original U/V flags to save them to file
@@ -394,6 +397,10 @@ def test(model, dl):
 
         # Round U/V flags
         predictions[:, :, 42] = np.round(predictions[:, :, 42])
+
+        # TODO Remove padding in prediction
+        masked_pred = mask_data(predictions, trg_mask)
+        predictions = np.ma.filled(masked_pred, fill_value=0.0)
 
         # Unscale parameters
         for i in range(predictions.shape[0]):
@@ -457,7 +464,8 @@ def test(model, dl):
           print('MCD = {} dB'.format(
               error_metrics.MCD(trg_batch[i, :, 0:40],
                                 predictions[i, :, 0:40])))
-          acc,_,_,_ = error_metrics.AFPR(trg_batch[i, :, 42], predictions[i, :, 42])
+          acc, _, _, _ = error_metrics.AFPR(trg_batch[i, :, 42],
+                                            predictions[i, :, 42])
           print('U/V accuracy = {}'.format(acc))
 
         # Increase batch index
