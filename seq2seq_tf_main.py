@@ -410,6 +410,9 @@ def test(model, dl):
           src_spk_max = dl.train_speakers_max[src_spk_index, :]
           src_spk_min = dl.train_speakers_min[src_spk_index, :]
 
+          trg_batch[i, :, 0:42] = trg_batch[i, :, 0:42] * (
+                          src_spk_max - src_spk_min) + src_spk_min
+
           logger.info('predictions shape: {}'.format(predictions.shape))
           predictions[i, :, 0:42] = predictions[i, :, 0:42] * (
             src_spk_max - src_spk_min) + src_spk_min
@@ -469,8 +472,8 @@ def test(model, dl):
                                           predictions[:, :, 42].reshape(-1,1))
         print('U/V accuracy = {}'.format(acc))
 
-        pitch_rmse = error_metrics.RMSE(trg_batch[:, :, 40].reshape(-1, 1),
-                                        predictions[:, :, 40].reshape(-1,1))
+        pitch_rmse = error_metrics.RMSE(np.exp(trg_batch[:, :, 40].reshape(-1, 1)),
+                                        np.exp(predictions[:, :, 40].reshape(-1,1)))
         print('Pitch RMSE = {}'.format(pitch_rmse))
 
         # Increase batch index
