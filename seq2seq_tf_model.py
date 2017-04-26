@@ -251,7 +251,7 @@ class Seq2Seq(object):
       split_dec_out]
 
     # Separate decoder output into parameters and flags
-    params_in, flags_in = tf.split(dec_outputs, [42, 2], axis=2)
+    # params_in, flags_in = tf.split(dec_outputs, [42, 2], axis=2)
 
     self.encoder_vars = {}
     for tvar in tf.trainable_variables():
