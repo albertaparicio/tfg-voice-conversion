@@ -269,6 +269,6 @@ tags
 /pretrain_data/test/pretrain_params.h5
 /predicted_pretrain_data/
 /pretrain_data/training_test/
-/tests/
+/experiments/
 /pretrain_data/training_chop/72/
 /pretrain_data/training_chop/73/

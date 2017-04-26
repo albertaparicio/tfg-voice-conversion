@@ -119,8 +119,8 @@ class Seq2Seq(object):
 
     self.prediction = self.inference()
 
-    self.loss = self.mae_loss(self.gtruth, self.gtruth_masks, self.prediction)
-    self.val_loss = self.mae_loss(self.gtruth, self.gtruth_masks,
+    self.loss = self.mse_loss(self.gtruth, self.gtruth_masks, self.prediction)
+    self.val_loss = self.mse_loss(self.gtruth, self.gtruth_masks,
                                   self.prediction)
 
     self.loss_summary = scalar_summary('loss', self.loss)

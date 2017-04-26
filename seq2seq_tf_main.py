@@ -53,8 +53,8 @@ if __name__ == '__main__':
                            ", quit training. (Def: 4).")
   parser.add_argument('--enc_rnn_layers', type=int, default=1)
   parser.add_argument('--dec_rnn_layers', type=int, default=1)
-  parser.add_argument('--rnn_size', type=int, default=256)
-  parser.add_argument('--cell_type', type=str, default="lstm")
+  parser.add_argument('--rnn_size', type=int, default=64)
+  parser.add_argument('--cell_type', type=str, default="gru")
   parser.add_argument('--batch_size', type=int, default=20)
   parser.add_argument('--epoch', type=int, default=30)
   parser.add_argument('--learning_rate', type=float, default=0.0005)
@@ -390,7 +390,6 @@ def test(model, dl):
         batch_timings.append(timeit.default_timer() - beg_t)
 
         # Decode predictions
-
         # predictions.shape -> (batch_size, max_seq_length, params_len)
         # Save original U/V flags to save them to file
         raw_uv_flags = predictions[:, :, 42]
@@ -398,11 +397,8 @@ def test(model, dl):
         # Round U/V flags
         predictions[:, :, 42] = np.round(predictions[:, :, 42])
 
-        # Unscale parameters
+        # Unscale target and predicted parameters
         for i in range(predictions.shape[0]):
-          # TODO Remove padding in prediction
-          masked_pred = mask_data(predictions[i], trg_mask[i])
-          predictions[i] = np.ma.filled(masked_pred, fill_value=0.0)
 
           src_spk_index = int(src_batch[i, 0, 44])
           trg_spk_index = int(src_batch[i, 0, 45])
@@ -411,11 +407,17 @@ def test(model, dl):
           src_spk_min = dl.train_speakers_min[src_spk_index, :]
 
           trg_batch[i, :, 0:42] = trg_batch[i, :, 0:42] * (
-                          src_spk_max - src_spk_min) + src_spk_min
+            src_spk_max - src_spk_min) + src_spk_min
 
-          logger.info('predictions shape: {}'.format(predictions.shape))
           predictions[i, :, 0:42] = predictions[i, :, 0:42] * (
             src_spk_max - src_spk_min) + src_spk_min
+
+          # Remove padding in prediction and target parameters
+          masked_trg = mask_data(trg_batch[i], trg_mask[i])
+          trg_batch[i] = np.ma.filled(masked_trg, fill_value=0.0)
+
+          masked_pred = mask_data(predictions[i], trg_mask[i])
+          predictions[i] = np.ma.filled(masked_pred, fill_value=0.0)
 
           # Apply U/V flag to lf0 and mvf params
           # predictions[i, :, 40][predictions[i, :, 42] == 0] = -1e10
@@ -464,16 +466,18 @@ def test(model, dl):
                            f_name + '.uv.dat'),
               raw_uv_flags[i, :]
               )
-        # Display MCD
+
+        # Display metrics
         print('MCD = {} dB'.format(
             error_metrics.MCD(trg_batch[:, :, 0:40].reshape(-1, 40),
                               predictions[:, :, 0:40].reshape(-1, 40))))
         acc, _, _, _ = error_metrics.AFPR(trg_batch[:, :, 42].reshape(-1, 1),
-                                          predictions[:, :, 42].reshape(-1,1))
+                                          predictions[:, :, 42].reshape(-1, 1))
         print('U/V accuracy = {}'.format(acc))
 
-        pitch_rmse = error_metrics.RMSE(np.exp(trg_batch[:, :, 40].reshape(-1, 1)),
-                                        np.exp(predictions[:, :, 40].reshape(-1,1)))
+        pitch_rmse = error_metrics.RMSE(
+          np.exp(trg_batch[:, :, 40].reshape(-1, 1)),
+          np.exp(predictions[:, :, 40].reshape(-1, 1)))
         print('Pitch RMSE = {}'.format(pitch_rmse))
 
         # Increase batch index
