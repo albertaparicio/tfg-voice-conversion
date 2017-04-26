@@ -401,7 +401,7 @@ def test(model, dl):
         # Unscale parameters
         for i in range(predictions.shape[0]):
           # TODO Remove padding in prediction
-          masked_pred = mask_data(predictions[i, :, :], trg_mask[i, :])
+          masked_pred = mask_data(predictions[:, :], trg_mask[i, :])
           predictions = np.ma.filled(masked_pred, fill_value=0.0)
 
           src_spk_index = int(src_batch[i, 0, 44])
@@ -410,6 +410,7 @@ def test(model, dl):
           src_spk_max = dl.train_speakers_max[src_spk_index, :]
           src_spk_min = dl.train_speakers_min[src_spk_index, :]
 
+          logger.info('predictions shape: {}'.format(predictions.shape))
           predictions[:, 0:42] = predictions[:, 0:42] * (
             src_spk_max - src_spk_min) + src_spk_min
 
