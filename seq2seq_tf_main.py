@@ -401,8 +401,8 @@ def test(model, dl):
         # Unscale parameters
         for i in range(predictions.shape[0]):
           # TODO Remove padding in prediction
-          masked_pred = mask_data(predictions[:, :], trg_mask[i, :])
-          predictions = np.ma.filled(masked_pred, fill_value=0.0)
+          masked_pred = mask_data(predictions[i], trg_mask[i])
+          predictions[i] = np.ma.filled(masked_pred, fill_value=0.0)
 
           src_spk_index = int(src_batch[i, 0, 44])
           trg_spk_index = int(src_batch[i, 0, 45])
@@ -411,7 +411,7 @@ def test(model, dl):
           src_spk_min = dl.train_speakers_min[src_spk_index, :]
 
           logger.info('predictions shape: {}'.format(predictions.shape))
-          predictions[:, 0:42] = predictions[:, 0:42] * (
+          predictions[i, :, 0:42] = predictions[i, :, 0:42] * (
             src_spk_max - src_spk_min) + src_spk_min
 
           # Apply U/V flag to lf0 and mvf params
@@ -419,8 +419,8 @@ def test(model, dl):
           # predictions[i, :, 41][predictions[i, :, 42] == 0] = 1000
 
           # Apply ground truth flags to prediction
-          predictions[:, 40][trg_batch[i, :, 42] == 0] = -1e10
-          predictions[:, 41][trg_batch[i, :, 42] == 0] = 1000
+          predictions[i, :, 40][trg_batch[i, :, 42] == 0] = -1e10
+          predictions[i, :, 41][trg_batch[i, :, 42] == 0] = 1000
 
           # Get speakers names
           src_spk_name = dl.s2s_datatable.src_speakers[src_spk_index]
@@ -443,17 +443,17 @@ def test(model, dl):
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.vf.dat'),
-              predictions[:, 41]
+              predictions[i, :, 41]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.lf0.dat'),
-              predictions[:, 40]
+              predictions[i, :, 40]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.mcp.dat'),
-              predictions[:, 0:40],
+              predictions[i, :, 0:40],
               delimiter='\t'
               )
           np.savetxt(
@@ -461,17 +461,17 @@ def test(model, dl):
                            f_name + '.uv.dat'),
               raw_uv_flags[i, :]
               )
-          # Display MCD
-          print('MCD = {} dB'.format(
-              error_metrics.MCD(trg_batch[i, :, 0:40],
-                                predictions[:, 0:40])))
-          acc, _, _, _ = error_metrics.AFPR(trg_batch[i, :, 42],
-                                            predictions[:, 42])
-          print('U/V accuracy = {}'.format(acc))
+        # Display MCD
+        print('MCD = {} dB'.format(
+            error_metrics.MCD(trg_batch[:, :, 0:40].reshape(-1, 40),
+                              predictions[:, :, 0:40].reshape(-1, 40))))
+        acc, _, _, _ = error_metrics.AFPR(trg_batch[:, :, 42].reshape(-1, 1),
+                                          predictions[:, :, 42].reshape(-1,1))
+        print('U/V accuracy = {}'.format(acc))
 
-          pitch_rmse = error_metrics.RMSE(trg_batch[i, :, 40],
-                                          predictions[:, 40])
-          print('Pitch RMSE = {}'.format(pitch_rmse))
+        pitch_rmse = error_metrics.RMSE(trg_batch[:, :, 40].reshape(-1, 1),
+                                        predictions[:, :, 40].reshape(-1,1))
+        print('Pitch RMSE = {}'.format(pitch_rmse))
 
         # Increase batch index
         if batch_idx >= dl.test_batches_per_epoch:
