@@ -53,5 +53,5 @@ while read TRG_SPK <&5; do
 
             echo "Decoded ${BASENAME}"
         done 3< ${PARAMS_DIR}${SRC_SPK}-${TRG_SPK}_uniq.list
-    done 4< 'data/test/speakers.list'
-done 5< 'data/test/speakers.list'
+    done 4< 'data/test/src_speakers.list'
+done 5< 'data/test/trg_speakers.list'

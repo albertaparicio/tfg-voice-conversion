@@ -455,8 +455,10 @@ def test(model, dl):
               )
           # Display MCD
           print('MCD = {} dB'.format(
-              error_metrics.MCD(src_batch[i, :, 0:40],
+              error_metrics.MCD(trg_batch[i, :, 0:40],
                                 predictions[i, :, 0:40])))
+          acc,_,_,_ = error_metrics.AFPR(trg_batch[i, :, 42], predictions[i, :, 42])
+          print('U/V accuracy = {}'.format(acc))
 
         # Increase batch index
         if batch_idx >= dl.test_batches_per_epoch:
