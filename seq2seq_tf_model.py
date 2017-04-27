@@ -310,9 +310,10 @@ class DataLoader(object):
                                                     max_seq_length))
 
       (self.src_test_data, self.src_seq_len, self.trg_test_data,
-       self.trg_test_masks_f, self.trg_seq_len, self.train_speakers,
-       self.train_speakers_max, self.train_speakers_min,
-       dataset_max_seq_length) = self.load_dataset(
+       self.trg_test_masks_f, self.trg_seq_len, self.train_src_speakers,
+       self.train_src_speakers_max, self.train_src_speakers_min,
+       self.train_trg_speakers, self.train_trg_speakers_max,
+       self.train_trg_speakers_min, dataset_max_seq_length) = self.load_dataset(
           args.train_out_file,
           args.save_h5,
           test=test
@@ -330,7 +331,9 @@ class DataLoader(object):
                                                     max_seq_length))
 
       (src_datatable, self.src_seq_len, trg_datatable, trg_masks,
-       self.trg_seq_len, train_speakers, train_speakers_max, train_speakers_min,
+       self.trg_seq_len, self.train_src_speakers, self.train_src_speakers_max,
+       self.train_src_speakers_min, self.train_trg_speakers,
+       self.train_trg_speakers_max, self.train_trg_speakers_min,
        dataset_max_seq_length) = self.load_dataset(
           args.train_out_file,
           args.save_h5
@@ -395,8 +398,10 @@ class DataLoader(object):
        trg_datatable,
        trg_masks,
        trg_seq_len,
-       train_speakers_max,
-       train_speakers_min
+       train_src_speakers_max,
+       train_src_speakers_min,
+       train_trg_speakers_max,
+       train_trg_speakers_min
        ) = self.s2s_datatable.seq2seq_save_datatable()
 
       self.logger.info('DONE - Saving datatable')
@@ -409,8 +414,10 @@ class DataLoader(object):
        trg_datatable,
        trg_masks,
        trg_seq_len,
-       train_speakers_max,
-       train_speakers_min
+       train_src_speakers_max,
+       train_src_speakers_min,
+       train_trg_speakers_max,
+       train_trg_speakers_min
        ) = self.s2s_datatable.seq2seq_load_datatable()
       self.logger.info('DONE - Loaded parameters')
 
@@ -418,12 +425,15 @@ class DataLoader(object):
       # Load training speakers data
       with h5py.File(train_out_file + '.h5', 'r') as file:
         # Load datasets
-        train_speakers_max = file.attrs.get('speakers_max')
-        train_speakers_min = file.attrs.get('speakers_min')
+        train_src_speakers_max = file.attrs.get('src_speakers_max')
+        train_src_speakers_min = file.attrs.get('src_speakers_min')
+        train_trg_speakers_max = file.attrs.get('trg_speakers_max')
+        train_trg_speakers_min = file.attrs.get('trg_speakers_min')
 
         file.close()
 
-    train_speakers = train_speakers_max.shape[0]
+    train_src_speakers = train_src_speakers_max.shape[0]
+    train_trg_speakers = train_trg_speakers_max.shape[0]
 
     # Normalize data
     self.logger.debug('Normalize data')
@@ -440,12 +450,15 @@ class DataLoader(object):
           src_masks[i, :],
           trg_datatable[i, :, :],
           trg_masks[i, :],
-          train_speakers_max,
-          train_speakers_min
+          train_src_speakers_max,
+          train_src_speakers_min,
+          train_trg_speakers_max,
+          train_trg_speakers_min
           )
 
     return (src_datatable, src_seq_len, trg_datatable, trg_masks, trg_seq_len,
-            train_speakers, train_speakers_max, train_speakers_min,
+            train_src_speakers, train_src_speakers_max, train_src_speakers_min,
+            train_trg_speakers, train_trg_speakers_max, train_trg_speakers_min,
             self.s2s_datatable.max_seq_length)
 
   def next_batch(self, test=False, validation=False):
