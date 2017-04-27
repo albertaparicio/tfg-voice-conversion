@@ -303,11 +303,10 @@ class DataLoader(object):
     self.batch_size = args.batch_size
 
     if test:
-      self.s2s_datatable = s2s.Seq2SeqDatatable(args.test_data_path,
-                                                args.test_out_file,
-                                                shortseq=shortseq,
-                                                max_seq_length=int(
-                                                    max_seq_length))
+      self.s2s_datatable = s2s.Seq2SeqDatatable(
+          args.test_data_path, args.test_out_file,
+          basenames_file='tcstar_basenames.list', shortseq=shortseq,
+          max_seq_length=int(max_seq_length),vocoded_dir='tcstar_vocoded')
 
       (self.src_test_data, self.src_seq_len, self.trg_test_data,
        self.trg_test_masks_f, self.trg_seq_len, self.train_src_speakers,
@@ -324,11 +323,10 @@ class DataLoader(object):
           )
 
     else:
-      self.s2s_datatable = s2s.Seq2SeqDatatable(args.train_data_path,
-                                                args.train_out_file,
-                                                shortseq=shortseq,
-                                                max_seq_length=int(
-                                                    max_seq_length))
+      self.s2s_datatable = s2s.Seq2SeqDatatable(
+          args.train_data_path, args.train_out_file,
+          basenames_file='tcstar_basenames.list', shortseq=shortseq,
+          max_seq_length=int(max_seq_length),vocoded_dir='tcstar_vocoded')
 
       (src_datatable, self.src_seq_len, trg_datatable, trg_masks,
        self.trg_seq_len, self.train_src_speakers, self.train_src_speakers_max,

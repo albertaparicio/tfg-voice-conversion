@@ -36,12 +36,12 @@ if __name__ == '__main__':
   # logger.debug('Before parsing args')
   parser = argparse.ArgumentParser(
       description="Convert voice signal with seq2seq model")
-  parser.add_argument('--train_data_path', type=str, default="data/training/")
+  parser.add_argument('--train_data_path', type=str, default="tcstar_data/training/")
   parser.add_argument('--train_out_file', type=str,
-                      default="data/seq2seq_train_datatable")
-  parser.add_argument('--test_data_path', type=str, default="data/test/")
+                      default="tcstar_data/seq2seq_train_datatable")
+  parser.add_argument('--test_data_path', type=str, default="tcstar_data/test/")
   parser.add_argument('--test_out_file', type=str,
-                      default="data/seq2seq_test_datatable")
+                      default="tcstar_data/seq2seq_test_datatable")
   parser.add_argument('--val_fraction', type=float, default=0.25)
   parser.add_argument('--save-h5', dest='save_h5', action='store_true',
                       help='Save dataset to .h5 file')
@@ -53,8 +53,8 @@ if __name__ == '__main__':
                            ", quit training. (Def: 4).")
   parser.add_argument('--enc_rnn_layers', type=int, default=1)
   parser.add_argument('--dec_rnn_layers', type=int, default=1)
-  parser.add_argument('--rnn_size', type=int, default=64)
-  parser.add_argument('--cell_type', type=str, default="gru")
+  parser.add_argument('--rnn_size', type=int, default=256)
+  parser.add_argument('--cell_type', type=str, default="lstm")
   parser.add_argument('--batch_size', type=int, default=20)
   parser.add_argument('--epoch', type=int, default=30)
   parser.add_argument('--learning_rate', type=float, default=0.0005)
