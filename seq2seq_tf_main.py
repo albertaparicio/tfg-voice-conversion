@@ -415,9 +415,11 @@ def test(model, dl):
           # Remove padding in prediction and target parameters
           masked_trg = mask_data(trg_batch[i], trg_mask[i])
           trg_batch[i] = np.ma.filled(masked_trg, fill_value=0.0)
+          unmasked_trg = np.ma.compress_rows(masked_trg)
 
           masked_pred = mask_data(predictions[i], trg_mask[i])
           predictions[i] = np.ma.filled(masked_pred, fill_value=0.0)
+          unmasked_prd =  np.ma.compress_rows(masked_pred)
 
           # Apply U/V flag to lf0 and mvf params
           # predictions[i, :, 40][predictions[i, :, 42] == 0] = -1e10
@@ -448,17 +450,17 @@ def test(model, dl):
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.vf.dat'),
-              predictions[i, :, 41]
+              unmasked_prd[:, 41]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.lf0.dat'),
-              predictions[i, :, 40]
+              unmasked_trg[:, 40]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.mcp.dat'),
-              predictions[i, :, 0:40],
+              unmasked_prd[:, 0:40],
               delimiter='\t'
               )
           np.savetxt(

@@ -411,7 +411,7 @@ class DataLoader(object):
        trg_seq_len,
        train_speakers_max,
        train_speakers_min
-       ) = self.s2s_datatable.seq2seq2_load_datatable()
+       ) = self.s2s_datatable.seq2seq_load_datatable()
       self.logger.info('DONE - Loaded parameters')
 
     if test:
