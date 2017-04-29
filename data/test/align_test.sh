@@ -8,7 +8,7 @@
 #   DESCRIPTION:
 #
 #       OPTIONS: ---
-#  REQUIREMENTS: ---
+#  REQUIREMENTS: interpolate.py from santi-pdp/ahoproc_tools @ GitHub
 #          BUGS: ---
 #         NOTES: ---
 #        AUTHOR: YOUR NAME (),
