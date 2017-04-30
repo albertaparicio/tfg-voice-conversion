@@ -405,35 +405,7 @@ def test(model, dl):
           src_spk_index = int(src_batch[i, 0, 44])
           trg_spk_index = int(src_batch[i, 0, 45])
 
-          src_spk_max = dl.train_src_speakers_max[src_spk_index, :]
-          src_spk_min = dl.train_src_speakers_min[src_spk_index, :]
-
-          trg_spk_max = dl.train_trg_speakers_max[trg_spk_index, :]
-          trg_spk_min = dl.train_trg_speakers_min[trg_spk_index, :]
-
-          trg_batch[i, :, 0:42] = trg_batch[i, :, 0:42] * (
-            trg_spk_max - trg_spk_min) + trg_spk_min
-
-          predictions[i, :, 0:42] = predictions[i, :, 0:42] * (
-            trg_spk_min - trg_spk_min) + trg_spk_min
-
-          # Remove padding in prediction and target parameters
-          masked_trg = mask_data(trg_batch[i], trg_mask[i])
-          trg_batch[i] = np.ma.filled(masked_trg, fill_value=0.0)
-          unmasked_trg = np.ma.compress_rows(masked_trg)
-
-          masked_pred = mask_data(predictions[i], trg_mask[i])
-          predictions[i] = np.ma.filled(masked_pred, fill_value=0.0)
-          unmasked_prd = np.ma.compress_rows(masked_pred)
-
-          # Apply U/V flag to lf0 and mvf params
-          # predictions[i, :, 40][predictions[i, :, 42] == 0] = -1e10
-          # predictions[i, :, 41][predictions[i, :, 42] == 0] = 1000
-
-          # Apply ground truth flags to prediction
-          predictions[i, :, 40][trg_batch[i, :, 42] == 0] = -1e10
-          predictions[i, :, 41][trg_batch[i, :, 42] == 0] = 1000
-
+          # Prepare filename
           # Get speakers names
           src_spk_name = dl.s2s_datatable.src_speakers[src_spk_index]
           trg_spk_name = dl.s2s_datatable.trg_speakers[trg_spk_index]
@@ -446,7 +418,6 @@ def test(model, dl):
             os.makedirs(
                 os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name))
 
-          # Prepare filename
           # TODO Get filename from datatable
           f_name = format(i + 1, '0' + str(
               max(5, len(str(dl.src_test_data.shape[0])))))
@@ -463,6 +434,33 @@ def test(model, dl):
             file.create_dataset('mask', data=trg_mask[i],
                                 compression="gzip",
                                 compression_opts=9)
+
+            trg_spk_max = dl.train_trg_speakers_max[trg_spk_index, :]
+            trg_spk_min = dl.train_trg_speakers_min[trg_spk_index, :]
+
+            trg_batch[i, :, 0:42] = trg_batch[i, :, 0:42] * (
+              trg_spk_max - trg_spk_min) + trg_spk_min
+
+            predictions[i, :, 0:42] = predictions[i, :, 0:42] * (
+              trg_spk_min - trg_spk_min) + trg_spk_min
+
+            # Remove padding in prediction and target parameters
+            masked_trg = mask_data(trg_batch[i], trg_mask[i])
+            trg_batch[i] = np.ma.filled(masked_trg, fill_value=0.0)
+            unmasked_trg = np.ma.compress_rows(masked_trg)
+
+            masked_pred = mask_data(predictions[i], trg_mask[i])
+            predictions[i] = np.ma.filled(masked_pred, fill_value=0.0)
+            unmasked_prd = np.ma.compress_rows(masked_pred)
+
+            # # Apply U/V flag to lf0 and mvf params
+            # unmasked_prd[i, :, 40][unmasked_prd[i, :, 42] == 0] = -1e10
+            # unmasked_prd[i, :, 41][unmasked_prd[i, :, 42] == 0] = 1000
+
+            # Apply ground truth flags to prediction
+            unmasked_prd[i, :, 40][unmasked_trg[i, :, 42] == 0] = -1e10
+            unmasked_prd[i, :, 41][unmasked_trg[i, :, 42] == 0] = 1000
+
             file.create_dataset('unmasked_prd', data=unmasked_prd,
                                 compression="gzip",
                                 compression_opts=9)
