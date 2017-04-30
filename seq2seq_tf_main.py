@@ -16,6 +16,7 @@ import timeit
 from datetime import datetime
 from sys import version_info
 
+import h5py
 import numpy as np
 import tensorflow as tf
 from ahoproc_tools import error_metrics
@@ -36,7 +37,8 @@ if __name__ == '__main__':
   # logger.debug('Before parsing args')
   parser = argparse.ArgumentParser(
       description="Convert voice signal with seq2seq model")
-  parser.add_argument('--train_data_path', type=str, default="tcstar_data/training/")
+  parser.add_argument('--train_data_path', type=str,
+                      default="tcstar_data/training/")
   parser.add_argument('--train_out_file', type=str,
                       default="tcstar_data/seq2seq_train_datatable")
   parser.add_argument('--test_data_path', type=str, default="tcstar_data/test/")
@@ -422,7 +424,7 @@ def test(model, dl):
 
           masked_pred = mask_data(predictions[i], trg_mask[i])
           predictions[i] = np.ma.filled(masked_pred, fill_value=0.0)
-          unmasked_prd =  np.ma.compress_rows(masked_pred)
+          unmasked_prd = np.ma.compress_rows(masked_pred)
 
           # Apply U/V flag to lf0 and mvf params
           # predictions[i, :, 40][predictions[i, :, 42] == 0] = -1e10
@@ -448,6 +450,20 @@ def test(model, dl):
           # TODO Get filename from datatable
           f_name = format(i + 1, '0' + str(
               max(5, len(str(dl.src_test_data.shape[0])))))
+
+          with h5py.File(
+              os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
+                           f_name + '.h5'), 'w') as file:
+            file.create_dataset('predictions', data=predictions[i])
+            file.create_dataset('target', data=trg_batch[i])
+            file.create_dataset('mask', data=trg_mask[i])
+            file.create_dataset('unmasked_prd', unmasked_prd)
+            file.create_dataset('unmasked_trg', unmasked_trg)
+
+            file.attrs.create('trg_max', trg_spk_max)
+            file.attrs.create('trg_min', trg_spk_min)
+
+            file.close()
 
           # Save predictions to files
           np.savetxt(
@@ -481,8 +497,8 @@ def test(model, dl):
         print('U/V accuracy = {}'.format(acc))
 
         pitch_rmse = error_metrics.RMSE(
-          np.exp(trg_batch[:, :, 40].reshape(-1, 1)),
-          np.exp(predictions[:, :, 40].reshape(-1, 1)))
+            np.exp(trg_batch[:, :, 40].reshape(-1, 1)),
+            np.exp(predictions[:, :, 40].reshape(-1, 1)))
         print('Pitch RMSE = {}'.format(pitch_rmse))
 
         # Increase batch index
