@@ -454,14 +454,27 @@ def test(model, dl):
           with h5py.File(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.h5'), 'w') as file:
-            file.create_dataset('predictions', data=predictions[i])
-            file.create_dataset('target', data=trg_batch[i])
-            file.create_dataset('mask', data=trg_mask[i])
-            file.create_dataset('unmasked_prd', unmasked_prd)
-            file.create_dataset('unmasked_trg', unmasked_trg)
-
-            file.attrs.create('trg_max', trg_spk_max)
-            file.attrs.create('trg_min', trg_spk_min)
+            file.create_dataset('predictions', data=predictions[i],
+                                compression="gzip",
+                                compression_opts=9)
+            file.create_dataset('target', data=trg_batch[i],
+                                compression="gzip",
+                                compression_opts=9)
+            file.create_dataset('mask', data=trg_mask[i],
+                                compression="gzip",
+                                compression_opts=9)
+            file.create_dataset('unmasked_prd', data=unmasked_prd,
+                                compression="gzip",
+                                compression_opts=9)
+            file.create_dataset('unmasked_trg', data=unmasked_trg,
+                                compression="gzip",
+                                compression_opts=9)
+            file.create_dataset('trg_max', data=trg_spk_max,
+                                compression="gzip",
+                                compression_opts=9)
+            file.create_dataset('trg_min', data=trg_spk_min,
+                                compression="gzip",
+                                compression_opts=9)
 
             file.close()
 
