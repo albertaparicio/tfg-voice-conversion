@@ -501,15 +501,15 @@ def test(model, dl):
 
         # Display metrics
         print('MCD = {} dB'.format(
-            error_metrics.MCD(trg_batch[:, :, 0:40].reshape(-1, 40),
-                              predictions[:, :, 0:40].reshape(-1, 40))))
-        acc, _, _, _ = error_metrics.AFPR(trg_batch[:, :, 42].reshape(-1, 1),
-                                          predictions[:, :, 42].reshape(-1, 1))
+            error_metrics.MCD(unmasked_trg[:, :, 0:40].reshape(-1, 40),
+                              unmasked_prd[:, :, 0:40].reshape(-1, 40))))
+        acc, _, _, _ = error_metrics.AFPR(unmasked_trg[:, :, 42].reshape(-1, 1),
+                                          unmasked_prd[:, :, 42].reshape(-1, 1))
         print('U/V accuracy = {}'.format(acc))
 
         pitch_rmse = error_metrics.RMSE(
-            np.exp(trg_batch[:, :, 40].reshape(-1, 1)),
-            np.exp(predictions[:, :, 40].reshape(-1, 1)))
+            np.exp(unmasked_trg[:, :, 40].reshape(-1, 1)),
+            np.exp(unmasked_prd[:, :, 40].reshape(-1, 1)))
         print('Pitch RMSE = {}'.format(pitch_rmse))
 
         # Increase batch index
