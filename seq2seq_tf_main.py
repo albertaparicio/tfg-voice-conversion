@@ -53,16 +53,16 @@ if __name__ == '__main__':
                            ", quit training. (Def: 4).")
   parser.add_argument('--enc_rnn_layers', type=int, default=1)
   parser.add_argument('--dec_rnn_layers', type=int, default=1)
-  parser.add_argument('--rnn_size', type=int, default=256)
+  parser.add_argument('--rnn_size', type=int, default=512)
   parser.add_argument('--cell_type', type=str, default="lstm")
-  parser.add_argument('--batch_size', type=int, default=20)
-  parser.add_argument('--epoch', type=int, default=30)
-  parser.add_argument('--learning_rate', type=float, default=0.0005)
+  parser.add_argument('--batch_size', type=int, default=10)
+  parser.add_argument('--epoch', type=int, default=50)
+  parser.add_argument('--learning_rate', type=float, default=0.00005)
   parser.add_argument('--dropout', type=float, default=0)
   parser.add_argument('--optimizer', type=str, default="adam")
   parser.add_argument('--clip_norm', type=float, default=5)
   parser.add_argument('--attn_length', type=int, default=500)
-  parser.add_argument('--attn_size', type=int, default=100)
+  parser.add_argument('--attn_size', type=int, default=256)
   parser.add_argument('--save_every', type=int, default=10)
   parser.add_argument('--no-train', dest='do_train',
                       action='store_false', help='Flag to train or not.')
@@ -458,7 +458,7 @@ def test(model, dl):
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
                            f_name + '.lf0.dat'),
-              unmasked_trg[:, 40]
+              unmasked_prd[:, 40]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
