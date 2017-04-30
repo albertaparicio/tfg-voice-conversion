@@ -129,9 +129,9 @@ class Seq2Seq(object):
     tvars = tf.trainable_variables()
     grads = []
     for grad in tf.gradients(self.loss, tvars):
-      if grad is not None:
-        grads.append(tf.clip_by_norm(grad, self.clip_norm))
-      else:
+      # if grad is not None:
+      #   grads.append(tf.clip_by_norm(grad, self.clip_norm))
+      # else:
         grads.append(grad)
 
     self.optimizer = optimizer
