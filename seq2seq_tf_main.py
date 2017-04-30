@@ -454,12 +454,12 @@ def test(model, dl):
             unmasked_prd = np.ma.compress_rows(masked_pred)
 
             # # Apply U/V flag to lf0 and mvf params
-            # unmasked_prd[i, :, 40][unmasked_prd[i, :, 42] == 0] = -1e10
-            # unmasked_prd[i, :, 41][unmasked_prd[i, :, 42] == 0] = 1000
+            # unmasked_prd[:, 40][unmasked_prd[:, 42] == 0] = -1e10
+            # unmasked_prd[:, 41][unmasked_prd[:, 42] == 0] = 1000
 
             # Apply ground truth flags to prediction
-            unmasked_prd[i, :, 40][unmasked_trg[i, :, 42] == 0] = -1e10
-            unmasked_prd[i, :, 41][unmasked_trg[i, :, 42] == 0] = 1000
+            unmasked_prd[:, 40][unmasked_trg[:, 42] == 0] = -1e10
+            unmasked_prd[:, 41][unmasked_trg[:, 42] == 0] = 1000
 
             file.create_dataset('unmasked_prd', data=unmasked_prd,
                                 compression="gzip",
