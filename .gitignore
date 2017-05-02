@@ -1,6 +1,4 @@
 # Created by .ignore support plugin (hsz.mobi)
-test.py
-
 ### DNN Training files
 #*.csv
 #*.png
@@ -272,3 +270,8 @@ tags
 /experiments/
 /pretrain_data/training_chop/72/
 /pretrain_data/training_chop/73/
+/tcstar_data/seq2seq_test_datatable.h5
+/tcstar_data/seq2seq_train_datatable.h5
+/tcstar_data/test/
+/tcstar_data/training/
+/training_results/tf_train/tensorboard/
