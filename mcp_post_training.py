@@ -7,11 +7,10 @@
 from __future__ import print_function
 
 import h5py
+from ahoproc_tools.error_metrics import MCD
 from keras.models import model_from_json
 from keras.optimizers import RMSprop
-
 from tfglib import utils
-from tfglib.error_metrics import MCD
 
 #######################
 # Sizes and constants #
@@ -33,6 +32,7 @@ model.load_weights('models/mcp_weights.h5')
 
 rmsprop = RMSprop(lr=0.0001)
 model.compile(loss='mse', optimizer=rmsprop)
+print('done')
 
 #############
 # Load data #

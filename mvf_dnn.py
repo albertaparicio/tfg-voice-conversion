@@ -1,7 +1,7 @@
 # Created by albert aparicio on 18/10/16
 # coding: utf-8
 
-# This is a script for initializing and training a fully-connected DNN for MVF mapping
+# This is a script for initializing and training a fully-connected DNN
 
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
@@ -13,7 +13,6 @@ from keras.layers import Dense, Dropout
 from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Sequential
 from keras.optimizers import RMSprop
-
 from tfglib import construct_table as ct
 from tfglib.utils import apply_context
 
@@ -64,8 +63,8 @@ else:
 # Sizes and constants #
 #######################
 batch_size = 300
-nb_epochs = 400
-learning_rate = 0.000001
+nb_epochs = 700
+learning_rate = 0.00000055
 context_size = 1
 
 ################
@@ -87,11 +86,15 @@ src_train_std = np.std(src_train_frames[:, 0], axis=0)
 trg_train_mean = np.mean(trg_train_frames[:, 0], axis=0)
 trg_train_std = np.std(trg_train_frames[:, 0], axis=0)
 
-src_train_frames[:, 0] = (src_train_frames[:, 0] - src_train_mean) / src_train_std
-src_valid_frames[:, 0] = (src_valid_frames[:, 0] - src_train_mean) / src_train_std
+src_train_frames[:, 0] = (src_train_frames[:, 0] -
+                          src_train_mean) / src_train_std
+src_valid_frames[:, 0] = (src_valid_frames[:, 0] -
+                          src_train_mean) / src_train_std
 
-trg_train_frames[:, 0] = (trg_train_frames[:, 0] - trg_train_mean) / trg_train_std
-trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] - trg_train_mean) / trg_train_std
+trg_train_frames[:, 0] = (trg_train_frames[:, 0] -
+                          trg_train_mean) / trg_train_std
+trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] -
+                          trg_train_mean) / trg_train_std
 
 # Save training statistics
 with h5py.File('models/mvf_train_stats.h5', 'w') as f:
