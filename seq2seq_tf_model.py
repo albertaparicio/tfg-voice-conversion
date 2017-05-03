@@ -184,6 +184,7 @@ class Seq2Seq(object):
       attention_decoder
     from tensorflow.contrib.rnn.python.ops.core_rnn import (
       static_bidirectional_rnn)
+    from tensorflow.contrib.rnn import LSTMStateTuple
 
     self.logger.debug('Imported seq2seq model from TF')
 
@@ -219,7 +220,7 @@ class Seq2Seq(object):
     self.encoder_state_summaries_bw = histogram_summary(
         'encoder_state_bw', enc_state_bw)
 
-    dec_cell = self.build_multirnn_block(self.rnn_size,
+    dec_cell = self.build_multirnn_block(self.rnn_size * 2,
                                          self.dec_rnn_layers,
                                          self.cell_type)
     if self.dropout > 0:
@@ -238,15 +239,28 @@ class Seq2Seq(object):
       loop_function = None
 
     # First calculate a concatenation of encoder outputs to put attention on.
-    assert enc_cell_fw.output_size == enc_cell_bw.output_size
+    # assert enc_cell_fw.output_size == enc_cell_bw.output_size
     top_states = [
-      tf.reshape(e, [-1, 1, enc_cell_fw.output_size]) for e in enc_out
+      tf.reshape(e, [-1, 1, enc_cell_fw.output_size + enc_cell_bw.output_size])
+      for e in enc_out
       ]
     attention_states = tf.concat(top_states, 1)
 
     self.logger.debug('Initialize decoder')
+    ############################################################################
+    # Code from renzhe0009 @ StackOverflow
+    # http://stackoverflow.com/q/42703140/7390416
+    # License: MIT
+    # Because published after March 2016 - meta.stackexchange.com/q/272956
+
+    enc_state_c = tf.concat(values=(enc_state_fw.c, enc_state_bw.c), axis=1)
+    enc_state_h = tf.concat(values=(enc_state_fw.h, enc_state_bw.h), axis=1)
+
+    enc_state = LSTMStateTuple(c=enc_state_c,h=enc_state_h)
+    ############################################################################
+
     dec_out, dec_state = attention_decoder(
-        self.decoder_inputs, enc_state_fw + enc_state_bw, cell=dec_cell,
+        self.decoder_inputs, enc_state, cell=dec_cell,
         attention_states=attention_states, loop_function=loop_function
         )
 

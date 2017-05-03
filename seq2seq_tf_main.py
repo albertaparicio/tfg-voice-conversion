@@ -256,8 +256,9 @@ def train(model, dl):
         feed_dict[dec_in] = trg_batch[:, i, :]
 
       logger.debug('sess.run')
-      tr_loss, _, enc_state, summary = sess.run(
-          [model.loss, model.train_op, model.enc_state, merged],
+      tr_loss, _, enc_state_fw, enc_state_bw, summary = sess.run(
+          [model.loss, model.train_op, model.enc_state_fw, model.enc_state_bw,
+           merged],
           feed_dict=feed_dict)
 
       logger.debug('Append batch timings')
