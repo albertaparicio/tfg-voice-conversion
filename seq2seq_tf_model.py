@@ -113,8 +113,13 @@ class Seq2Seq(object):
                      ) for _ in range(seq_length)]
 
     # To be assigned a value later
-    self.enc_state, self.encoder_vars, self.enc_zero = None, None, None
-    self.encoder_state_summaries = None
+    self.enc_state_fw = None
+    self.enc_state_bw = None
+    self.encoder_vars = None
+    self.enc_zero_fw = None
+    self.enc_zero_bw = None
+    self.encoder_state_summaries_fw = None
+    self.encoder_state_summaries_bw = None
     self.decoder_outputs_summaries = []
 
     self.prediction = self.inference()
@@ -132,7 +137,7 @@ class Seq2Seq(object):
       # if grad is not None:
       #   grads.append(tf.clip_by_norm(grad, self.clip_norm))
       # else:
-        grads.append(grad)
+      grads.append(grad)
 
     self.optimizer = optimizer
     # set up a variable to make the learning rate evolve during training
@@ -177,24 +182,31 @@ class Seq2Seq(object):
     self.logger.debug('Inference')
     from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import \
       attention_decoder
-    from tensorflow.contrib.rnn.python.ops.core_rnn import static_rnn
+    from tensorflow.contrib.rnn.python.ops.core_rnn import (
+      static_bidirectional_rnn)
 
     self.logger.debug('Imported seq2seq model from TF')
 
     with tf.variable_scope("encoder"):
-      enc_cell = self.build_multirnn_block(self.rnn_size,
-                                           self.enc_rnn_layers,
-                                           self.cell_type)
-      self.enc_zero = enc_cell.zero_state(self.batch_size, tf.float32)
+      enc_cell_fw = self.build_multirnn_block(self.rnn_size,
+                                              self.enc_rnn_layers,
+                                              self.cell_type)
+      enc_cell_bw = self.build_multirnn_block(self.rnn_size,
+                                              self.enc_rnn_layers,
+                                              self.cell_type)
+      self.enc_zero_fw = enc_cell_fw.zero_state(self.batch_size, tf.float32)
+      self.enc_zero_bw = enc_cell_bw.zero_state(self.batch_size, tf.float32)
 
       self.logger.debug('Initialize encoder')
-      enc_out, enc_state = static_rnn(enc_cell,
-                                      self.encoder_inputs,
-                                      initial_state=self.enc_zero,
-                                      sequence_length=self.seq_length)
+      enc_out, enc_state_fw, enc_state_bw = static_bidirectional_rnn(
+          cell_fw=enc_cell_fw, cell_bw=enc_cell_bw, inputs=self.encoder_inputs,
+          initial_state_fw=self.enc_zero_fw, initial_state_bw=self.enc_zero_bw,
+          sequence_length=self.seq_length
+          )
 
     # This op is created to visualize the thought vectors
-    self.enc_state = enc_state
+    self.enc_state_fw = enc_state_fw
+    self.enc_state_bw = enc_state_bw
 
     self.logger.info(
         'enc out (len {}) tensors shape: {}'.format(
@@ -202,7 +214,10 @@ class Seq2Seq(object):
             ))
     # print('enc out tensor shape: ', enc_out.get_shape())
 
-    self.encoder_state_summaries = histogram_summary('encoder_state', enc_state)
+    self.encoder_state_summaries_fw = histogram_summary(
+        'encoder_state_fw', enc_state_fw)
+    self.encoder_state_summaries_bw = histogram_summary(
+        'encoder_state_bw', enc_state_bw)
 
     dec_cell = self.build_multirnn_block(self.rnn_size,
                                          self.dec_rnn_layers,
@@ -223,14 +238,15 @@ class Seq2Seq(object):
       loop_function = None
 
     # First calculate a concatenation of encoder outputs to put attention on.
+    assert enc_cell_fw.output_size == enc_cell_bw.output_size
     top_states = [
-      tf.reshape(e, [-1, 1, enc_cell.output_size]) for e in enc_out
+      tf.reshape(e, [-1, 1, enc_cell_fw.output_size]) for e in enc_out
       ]
     attention_states = tf.concat(top_states, 1)
 
     self.logger.debug('Initialize decoder')
     dec_out, dec_state = attention_decoder(
-        self.decoder_inputs, enc_state, cell=dec_cell,  # output_size=
+        self.decoder_inputs, enc_state_fw + enc_state_bw, cell=dec_cell,
         attention_states=attention_states, loop_function=loop_function
         )
 
@@ -306,7 +322,7 @@ class DataLoader(object):
       self.s2s_datatable = s2s.Seq2SeqDatatable(
           args.test_data_path, args.test_out_file,
           basenames_file='tcstar_basenames.list', shortseq=shortseq,
-          max_seq_length=int(max_seq_length),vocoded_dir='tcstar_vocoded')
+          max_seq_length=int(max_seq_length), vocoded_dir='tcstar_vocoded')
 
       (self.src_test_data, self.src_seq_len, self.trg_test_data,
        self.trg_test_masks_f, self.trg_seq_len, self.train_src_speakers,
@@ -326,7 +342,7 @@ class DataLoader(object):
       self.s2s_datatable = s2s.Seq2SeqDatatable(
           args.train_data_path, args.train_out_file,
           basenames_file='tcstar_basenames.list', shortseq=shortseq,
-          max_seq_length=int(max_seq_length),vocoded_dir='tcstar_vocoded')
+          max_seq_length=int(max_seq_length), vocoded_dir='tcstar_vocoded')
 
       (src_datatable, self.src_seq_len, trg_datatable, trg_masks,
        self.trg_seq_len, self.train_src_speakers, self.train_src_speakers_max,

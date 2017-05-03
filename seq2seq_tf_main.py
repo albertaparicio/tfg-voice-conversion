@@ -72,6 +72,7 @@ if __name__ == '__main__':
                       action='store_false', help='Flag to test or not.')
   parser.add_argument('--save_path', type=str, default="training_results")
   parser.add_argument('--pred_path', type=str, default="tf_predicted")
+  parser.add_argument('--tb_path', type=str, default="")
   parser.add_argument('--log', type=str, default="INFO")
 
   parser.set_defaults(do_train=True, do_test=True, save_h5=False)
@@ -213,7 +214,7 @@ def train(model, dl):
       merged = tf.merge_all_summaries()
 
     results_dir = os.path.join(opts.save_path, 'tf_train')
-    log_dir = os.path.join(results_dir, 'tensorboard')
+    log_dir = os.path.join(results_dir, 'tensorboard', opts.tb_path)
 
     if not os.path.exists(log_dir):
       os.makedirs(log_dir)
