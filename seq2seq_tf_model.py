@@ -220,7 +220,7 @@ class Seq2Seq(object):
     self.encoder_state_summaries_bw = histogram_summary(
         'encoder_state_bw', enc_state_bw)
 
-    dec_cell = self.build_multirnn_block(self.rnn_size * 2,
+    dec_cell = self.build_multirnn_block(self.rnn_size,
                                          self.dec_rnn_layers,
                                          self.cell_type)
     if self.dropout > 0:
@@ -253,8 +253,10 @@ class Seq2Seq(object):
     # License: MIT
     # Because published after March 2016 - meta.stackexchange.com/q/272956
 
-    enc_state_c = tf.concat(values=(enc_state_fw.c, enc_state_bw.c), axis=1)
-    enc_state_h = tf.concat(values=(enc_state_fw.h, enc_state_bw.h), axis=1)
+    # enc_state_c = tf.concat(values=(enc_state_fw.c, enc_state_bw.c), axis=1)
+    # enc_state_h = tf.concat(values=(enc_state_fw.h, enc_state_bw.h), axis=1)
+    enc_state_c = enc_state_fw.c + enc_state_bw.c
+    enc_state_h = enc_state_fw.h + enc_state_bw.h
 
     enc_state = LSTMStateTuple(c=enc_state_c,h=enc_state_h)
     ############################################################################
