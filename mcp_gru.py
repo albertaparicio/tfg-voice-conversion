@@ -6,6 +6,8 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import os
+
 import h5py
 import numpy as np
 from keras.layers import Dense, Dropout, GRU
@@ -134,15 +136,23 @@ model.compile(loss='mse', optimizer=rmsprop)
 # Train model #
 ###############
 print('Training')
+epoch = list(range(epochs))
+loss = []
+val_loss = []
+
 for i in range(epochs):
   print('Epoch', i, '/', epochs)
-  model.fit(src_train_data,
-            trg_train_data,
-            batch_size=batch_size,
-            verbose=1,
-            nb_epoch=1,
-            shuffle=False,
-            validation_data=(src_valid_data, trg_valid_data))
+  history = model.fit(src_train_data,
+                      trg_train_data,
+                      batch_size=batch_size,
+                      verbose=1,
+                      nb_epoch=1,
+                      shuffle=False,
+                      validation_data=(src_valid_data, trg_valid_data))
+
+  loss.append(history.history['loss'])
+  val_loss.append(history.history['val_loss'])
+
   model.reset_states()
 
 print('Saving model')
@@ -151,9 +161,20 @@ model.save_weights('models/mcp_weights.h5')
 with open('models/mcp_model.json', 'w') as model_json:
   model_json.write(model.to_json())
 
-print('========================' +
-      '\n' +
-      '======= FINISHED =======' +
-      '\n' +
-      '========================'
-      )
+print('Saving training results')
+with h5py.File(os.path.join('training_results', 'baseline', 'mcp_history.h5'),
+               'w') as hist_file:
+  hist_file.create_dataset('loss', data=loss,
+                           compression='gzip', compression_opts=9)
+  hist_file.create_dataset('val_loss', data=val_loss,
+                           compression='gzip', compression_opts=9)
+  hist_file.create_dataset('epoch', data=epoch, compression='gzip',
+                           compression_opts=9)
+
+  hist_file.close()
+
+print('========================' + '\n' +
+      '======= FINISHED =======' + '\n' +
+      '========================')
+
+exit()
