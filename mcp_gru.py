@@ -146,7 +146,7 @@ for i in range(epochs):
                       trg_train_data,
                       batch_size=batch_size,
                       verbose=1,
-                      nb_epoch=1,
+                      epochs=1,
                       shuffle=False,
                       validation_data=(src_valid_data, trg_valid_data))
 
