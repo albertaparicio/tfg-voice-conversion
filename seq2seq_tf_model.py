@@ -182,8 +182,7 @@ class Seq2Seq(object):
     self.logger.debug('Inference')
     from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import \
       attention_decoder
-    from tensorflow.contrib.rnn.python.ops.core_rnn import (
-      static_bidirectional_rnn)
+    from tensorflow.contrib.rnn.python.ops.core_rnn import static_rnn
     from tensorflow.contrib.rnn import LSTMStateTuple
     from tensorflow.contrib.layers import batch_norm
 
@@ -193,11 +192,11 @@ class Seq2Seq(object):
       enc_cell_fw = self.build_multirnn_block(self.rnn_size,
                                               self.enc_rnn_layers,
                                               self.cell_type)
-      enc_cell_bw = self.build_multirnn_block(self.rnn_size,
-                                              self.enc_rnn_layers,
-                                              self.cell_type)
+      # enc_cell_bw = self.build_multirnn_block(self.rnn_size,
+      #                                         self.enc_rnn_layers,
+      #                                         self.cell_type)
       self.enc_zero_fw = enc_cell_fw.zero_state(self.batch_size, tf.float32)
-      self.enc_zero_bw = enc_cell_bw.zero_state(self.batch_size, tf.float32)
+      # self.enc_zero_bw = enc_cell_bw.zero_state(self.batch_size, tf.float32)
 
       self.logger.debug('Initialize encoder')
 
@@ -206,11 +205,15 @@ class Seq2Seq(object):
       for tensor in self.encoder_inputs:
         inputs.append(batch_norm(tensor, is_training=self.infer))
 
-      enc_out_orig, enc_state_fw, enc_state_bw = static_bidirectional_rnn(
-          cell_fw=enc_cell_fw, cell_bw=enc_cell_bw, inputs=inputs,
-          initial_state_fw=self.enc_zero_fw, initial_state_bw=self.enc_zero_bw,
-          sequence_length=self.seq_length
-          )
+      # enc_out_orig, enc_state_fw, enc_state_bw = static_bidirectional_rnn(
+      #     cell_fw=enc_cell_fw, cell_bw=enc_cell_bw, inputs=inputs,
+      #     initial_state_fw=self.enc_zero_fw,
+      # initial_state_bw=self.enc_zero_bw,
+      #     sequence_length=self.seq_length
+      #     )
+      enc_out_orig, enc_state_fw = static_rnn(cell=enc_cell_fw, inputs=inputs,
+                                           initial_state=self.enc_zero_fw,
+                                           sequence_length=self.seq_length)
 
       enc_out = []
       for tensor in enc_out_orig:
@@ -218,7 +221,7 @@ class Seq2Seq(object):
 
     # This op is created to visualize the thought vectors
     self.enc_state_fw = enc_state_fw
-    self.enc_state_bw = enc_state_bw
+    # self.enc_state_bw = enc_state_bw
 
     self.logger.info(
         'enc out (len {}) tensors shape: {}'.format(
@@ -228,8 +231,8 @@ class Seq2Seq(object):
 
     self.encoder_state_summaries_fw = histogram_summary(
         'encoder_state_fw', enc_state_fw)
-    self.encoder_state_summaries_bw = histogram_summary(
-        'encoder_state_bw', enc_state_bw)
+    # self.encoder_state_summaries_bw = histogram_summary(
+    #     'encoder_state_bw', enc_state_bw)
 
     dec_cell = self.build_multirnn_block(self.rnn_size,
                                          self.dec_rnn_layers,
@@ -251,29 +254,33 @@ class Seq2Seq(object):
 
     # First calculate a concatenation of encoder outputs to put attention on.
     # assert enc_cell_fw.output_size == enc_cell_bw.output_size
+    # top_states = [
+    #   tf.reshape(e, [-1, 1, enc_cell_fw.output_size + enc_cell_bw.output_size])
+    #   for e in enc_out
+    #   ]
     top_states = [
-      tf.reshape(e, [-1, 1, enc_cell_fw.output_size + enc_cell_bw.output_size])
+      tf.reshape(e, [-1, 1, enc_cell_fw.output_size])
       for e in enc_out
       ]
     attention_states = tf.concat(top_states, 1)
 
     self.logger.debug('Initialize decoder')
-    ############################################################################
-    # Code from renzhe0009 @ StackOverflow
-    # http://stackoverflow.com/q/42703140/7390416
-    # License: MIT
-    # Because published after March 2016 - meta.stackexchange.com/q/272956
-
-    # enc_state_c = tf.concat(values=(enc_state_fw.c, enc_state_bw.c), axis=1)
-    # enc_state_h = tf.concat(values=(enc_state_fw.h, enc_state_bw.h), axis=1)
-    enc_state_c = enc_state_fw.c + enc_state_bw.c
-    enc_state_h = enc_state_fw.h + enc_state_bw.h
-
-    enc_state = LSTMStateTuple(c=enc_state_c,h=enc_state_h)
-    ############################################################################
+    # ############################################################################
+    # # Code from renzhe0009 @ StackOverflow
+    # # http://stackoverflow.com/q/42703140/7390416
+    # # License: MIT
+    # # Because published after March 2016 - meta.stackexchange.com/q/272956
+    #
+    # # enc_state_c = tf.concat(values=(enc_state_fw.c, enc_state_bw.c), axis=1)
+    # # enc_state_h = tf.concat(values=(enc_state_fw.h, enc_state_bw.h), axis=1)
+    # enc_state_c = enc_state_fw.c + enc_state_bw.c
+    # enc_state_h = enc_state_fw.h + enc_state_bw.h
+    #
+    # enc_state = LSTMStateTuple(c=enc_state_c, h=enc_state_h)
+    # ############################################################################
 
     dec_out, dec_state = attention_decoder(
-        self.decoder_inputs, enc_state, cell=dec_cell,
+        self.decoder_inputs, enc_state_fw, cell=dec_cell,
         attention_states=attention_states, loop_function=loop_function
         )
 

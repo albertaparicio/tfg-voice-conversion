@@ -256,8 +256,8 @@ def train(model, dl):
         feed_dict[dec_in] = trg_batch[:, i, :]
 
       logger.debug('sess.run')
-      tr_loss, _, enc_state_fw, enc_state_bw, summary = sess.run(
-          [model.loss, model.train_op, model.enc_state_fw, model.enc_state_bw,
+      tr_loss, _, enc_state_fw, summary = sess.run(
+          [model.loss, model.train_op, model.enc_state_fw,
            merged],
           feed_dict=feed_dict)
 
