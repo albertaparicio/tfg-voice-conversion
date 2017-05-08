@@ -356,9 +356,16 @@ def test(model, dl):
     if model.load(sess, os.path.join(opts.save_path, 'tf_train')):
       logger.info('Loaded model successfully!')
 
+      n_batch = 0
+
       # DataLoader.next_batch
       for (src_batch, src_batch_seq_len, trg_batch, trg_mask) in dl.next_batch(
           test=True):
+
+        # TODO Get filename from datatable
+        f_name = format(n_batch + 1, '0' + str(
+            max(5, len(str(dl.src_test_data.shape[0])))))
+
         beg_t = timeit.default_timer()
 
         # Fill feed_dict with test data
@@ -417,9 +424,9 @@ def test(model, dl):
             os.makedirs(
                 os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name))
 
-          # TODO Get filename from datatable
-          f_name = format(i + 1, '0' + str(
-              max(5, len(str(dl.src_test_data.shape[0])))))
+          # # TODO Get filename from datatable
+          # f_name = format(i + 1, '0' + str(
+              # max(5, len(str(dl.src_test_data.shape[0])))))
 
           with h5py.File(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
@@ -444,7 +451,7 @@ def test(model, dl):
               trg_spk_min - trg_spk_min)) + trg_spk_min
 
             # Round U/V flags
-            predictions[i, :, 42] = np.round(predictions[1, :, 42])
+            predictions[i, :, 42] = np.round(predictions[i, :, 42])
 
             # Remove padding in prediction and target parameters
             masked_trg = mask_data(trg_batch[i], trg_mask[i])
@@ -501,6 +508,8 @@ def test(model, dl):
               )
 
         # Display metrics
+        print('Num - {}'.format(n_batch))
+
         print('MCD = {} dB'.format(
             error_metrics.MCD(unmasked_trg[:, 0:40].reshape(-1, 40),
                               unmasked_prd[:, 0:40].reshape(-1, 40))))
@@ -517,6 +526,8 @@ def test(model, dl):
         if batch_idx >= dl.test_batches_per_epoch:
           break
         batch_idx += 1
+
+        n_batch +=1
 
       # Print test results
       m_test_loss = np.mean(te_losses)
