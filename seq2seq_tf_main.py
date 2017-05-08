@@ -398,9 +398,6 @@ def test(model, dl):
         # Save original U/V flags to save them to file
         raw_uv_flags = predictions[:, :, 42]
 
-        # Round U/V flags
-        predictions[:, :, 42] = np.round(predictions[:, :, 42])
-
         # Unscale target and predicted parameters
         for i in range(predictions.shape[0]):
 
@@ -440,11 +437,14 @@ def test(model, dl):
             trg_spk_max = dl.train_trg_speakers_max[trg_spk_index, :]
             trg_spk_min = dl.train_trg_speakers_min[trg_spk_index, :]
 
-            trg_batch[i, :, 0:42] = trg_batch[i, :, 0:42] * (
-              trg_spk_max - trg_spk_min) + trg_spk_min
+            trg_batch[i, :, 0:42] = (trg_batch[i, :, 0:42] * (
+              trg_spk_max - trg_spk_min)) + trg_spk_min
 
-            predictions[i, :, 0:42] = predictions[i, :, 0:42] * (
-              trg_spk_min - trg_spk_min) + trg_spk_min
+            predictions[i, :, 0:42] = (predictions[i, :, 0:42] * (
+              trg_spk_min - trg_spk_min)) + trg_spk_min
+
+            # Round U/V flags
+            predictions[i, :, 42] = np.round(predictions[1, :, 42])
 
             # Remove padding in prediction and target parameters
             masked_trg = mask_data(trg_batch[i], trg_mask[i])
@@ -475,7 +475,6 @@ def test(model, dl):
             file.create_dataset('trg_min', data=trg_spk_min,
                                 compression="gzip",
                                 compression_opts=9)
-
             file.close()
 
           # Save predictions to files
