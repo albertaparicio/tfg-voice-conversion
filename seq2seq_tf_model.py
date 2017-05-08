@@ -185,6 +185,7 @@ class Seq2Seq(object):
     from tensorflow.contrib.rnn.python.ops.core_rnn import (
       static_bidirectional_rnn)
     from tensorflow.contrib.rnn import LSTMStateTuple
+    from tensorflow.contrib.layers import batch_norm
 
     self.logger.debug('Imported seq2seq model from TF')
 
@@ -199,11 +200,21 @@ class Seq2Seq(object):
       self.enc_zero_bw = enc_cell_bw.zero_state(self.batch_size, tf.float32)
 
       self.logger.debug('Initialize encoder')
-      enc_out, enc_state_fw, enc_state_bw = static_bidirectional_rnn(
-          cell_fw=enc_cell_fw, cell_bw=enc_cell_bw, inputs=self.encoder_inputs,
+
+      # inputs = batch_norm(self.encoder_inputs, is_training=self.infer)
+      inputs = []
+      for tensor in self.encoder_inputs:
+        inputs.append(batch_norm(tensor, is_training=self.infer))
+
+      enc_out_orig, enc_state_fw, enc_state_bw = static_bidirectional_rnn(
+          cell_fw=enc_cell_fw, cell_bw=enc_cell_bw, inputs=inputs,
           initial_state_fw=self.enc_zero_fw, initial_state_bw=self.enc_zero_bw,
           sequence_length=self.seq_length
           )
+
+      enc_out = []
+      for tensor in enc_out_orig:
+        enc_out.append(batch_norm(tensor, is_training=self.infer))
 
     # This op is created to visualize the thought vectors
     self.enc_state_fw = enc_state_fw
