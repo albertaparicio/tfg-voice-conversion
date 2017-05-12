@@ -15,6 +15,9 @@ import os
 import numpy as np
 import tensorflow as tf
 import tfglib.seq2seq_datatable as s2s
+from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import \
+  attention_decoder
+from tensorflow.contrib.rnn.python.ops.core_rnn import static_rnn
 from tfglib.seq2seq_normalize import maxmin_scaling
 from tfglib.utils import init_logger
 
@@ -180,12 +183,6 @@ class Seq2Seq(object):
 
   def inference(self):
     self.logger.debug('Inference')
-    from tensorflow.contrib.legacy_seq2seq.python.ops.seq2seq import \
-      attention_decoder
-    from tensorflow.contrib.rnn.python.ops.core_rnn import static_rnn
-    from tensorflow.contrib.rnn import LSTMStateTuple
-    from tensorflow.contrib.layers import batch_norm
-
     self.logger.debug('Imported seq2seq model from TF')
 
     with tf.variable_scope("encoder"):
@@ -201,9 +198,9 @@ class Seq2Seq(object):
       self.logger.debug('Initialize encoder')
 
       # inputs = batch_norm(self.encoder_inputs, is_training=self.infer)
-      inputs = []
-      for tensor in self.encoder_inputs:
-        inputs.append(batch_norm(tensor, is_training=self.infer))
+      # inputs = []
+      # for tensor in self.encoder_inputs:
+      #   inputs.append(batch_norm(tensor, is_training=self.infer))
 
       # enc_out_orig, enc_state_fw, enc_state_bw = static_bidirectional_rnn(
       #     cell_fw=enc_cell_fw, cell_bw=enc_cell_bw, inputs=inputs,
@@ -211,13 +208,14 @@ class Seq2Seq(object):
       # initial_state_bw=self.enc_zero_bw,
       #     sequence_length=self.seq_length
       #     )
-      enc_out_orig, enc_state_fw = static_rnn(cell=enc_cell_fw, inputs=inputs,
-                                           initial_state=self.enc_zero_fw,
-                                           sequence_length=self.seq_length)
+      enc_out, enc_state_fw = static_rnn(cell=enc_cell_fw,
+                                         inputs=self.encoder_inputs,
+                                         initial_state=self.enc_zero_fw)  # ,
+      #                                  sequence_length=self.seq_length)
 
-      enc_out = []
-      for tensor in enc_out_orig:
-        enc_out.append(batch_norm(tensor, is_training=self.infer))
+      # enc_out = []
+      # for tensor in enc_out_orig:
+      #   enc_out.append(batch_norm(tensor, is_training=self.infer))
 
     # This op is created to visualize the thought vectors
     self.enc_state_fw = enc_state_fw
@@ -255,7 +253,8 @@ class Seq2Seq(object):
     # First calculate a concatenation of encoder outputs to put attention on.
     # assert enc_cell_fw.output_size == enc_cell_bw.output_size
     # top_states = [
-    #   tf.reshape(e, [-1, 1, enc_cell_fw.output_size + enc_cell_bw.output_size])
+    #   tf.reshape(e, [-1, 1, enc_cell_fw.output_size +
+    # enc_cell_bw.output_size])
     #   for e in enc_out
     #   ]
     top_states = [
