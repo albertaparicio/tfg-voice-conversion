@@ -101,7 +101,7 @@ print('Saving loss curves')
 plt.plot(epoch, loss, epoch, val_loss)
 plt.legend(['loss', 'val_loss'], loc='best')
 plt.grid(b=True)
-plt.suptitle('Baseline MVF Loss curves')
+plt.suptitle('Baseline MCP Loss curves')
 plt.savefig(os.path.join('training_results', 'baseline', 'mcp_loss_curves.eps'),
             bbox_inches='tight')
 
