@@ -275,3 +275,4 @@ tags
 /tcstar_data/test/
 /tcstar_data/training/
 /training_results/tf_train/tensorboard/
+/training_results/tf_train/old_models/
