@@ -276,3 +276,7 @@ tags
 /tcstar_data/training/
 /training_results/tf_train/tensorboard/
 /training_results/tf_train/old_models/
+/tcstar_data_trim/training/
+/tcstar_data_trim/test/
+/tcstar_data_trim/speakers.list
+/tcstar_data_trim/basenames.list
