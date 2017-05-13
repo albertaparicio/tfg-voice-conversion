@@ -430,7 +430,7 @@ def test(model, dl):
 
           with h5py.File(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '.h5'), 'w') as file:
+                           f_name + '_'+str(i)+'.h5'), 'w') as file:
             file.create_dataset('predictions', data=predictions[i],
                                 compression="gzip",
                                 compression_opts=9)
@@ -487,23 +487,23 @@ def test(model, dl):
           # Save predictions to files
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '.vf.dat'),
+                           f_name + '_'+str(i)+'.vf.dat'),
               unmasked_prd[:, 41]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '.lf0.dat'),
+                           f_name + '_'+str(i)+'.lf0.dat'),
               unmasked_prd[:, 40]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '.mcp.dat'),
+                           f_name + '_'+str(i)+'.mcp.dat'),
               unmasked_prd[:, 0:40],
               delimiter='\t'
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '.uv.dat'),
+                           f_name + '_'+str(i)+'.uv.dat'),
               raw_uv_flags[i, :]
               )
 
