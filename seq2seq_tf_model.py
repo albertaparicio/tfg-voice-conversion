@@ -210,8 +210,8 @@ class Seq2Seq(object):
       #     )
       enc_out, enc_state_fw = static_rnn(cell=enc_cell_fw,
                                          inputs=self.encoder_inputs,
-                                         initial_state=self.enc_zero_fw)  # ,
-      #                                  sequence_length=self.seq_length)
+                                         initial_state=self.enc_zero_fw,
+                                         sequence_length=self.seq_length)
 
       # enc_out = []
       # for tensor in enc_out_orig:

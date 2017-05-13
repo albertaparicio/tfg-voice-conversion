@@ -424,13 +424,13 @@ def test(model, dl):
             os.makedirs(
                 os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name))
 
-          # # TODO Get filename from datatable
-          # f_name = format(i + 1, '0' + str(
-              # max(5, len(str(dl.src_test_data.shape[0])))))
+            # # TODO Get filename from datatable
+            # f_name = format(i + 1, '0' + str(
+            # max(5, len(str(dl.src_test_data.shape[0])))))
 
           with h5py.File(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '_'+str(i)+'.h5'), 'w') as file:
+                           f_name + '_' + str(i) + '.h5'), 'w') as file:
             file.create_dataset('predictions', data=predictions[i],
                                 compression="gzip",
                                 compression_opts=9)
@@ -487,23 +487,23 @@ def test(model, dl):
           # Save predictions to files
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '_'+str(i)+'.vf.dat'),
+                           f_name + '_' + str(i) + '.vf.dat'),
               unmasked_prd[:, 41]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '_'+str(i)+'.lf0.dat'),
+                           f_name + '_' + str(i) + '.lf0.dat'),
               unmasked_prd[:, 40]
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '_'+str(i)+'.mcp.dat'),
+                           f_name + '_' + str(i) + '.mcp.dat'),
               unmasked_prd[:, 0:40],
               delimiter='\t'
               )
           np.savetxt(
               os.path.join(tf_pred_path, src_spk_name + '-' + trg_spk_name,
-                           f_name + '_'+str(i)+'.uv.dat'),
+                           f_name + '_' + str(i) + '.uv.dat'),
               raw_uv_flags[i, :]
               )
 
@@ -527,7 +527,7 @@ def test(model, dl):
           break
         batch_idx += 1
 
-        n_batch +=1
+        n_batch += 1
 
       # Print test results
       m_test_loss = np.mean(te_losses)
