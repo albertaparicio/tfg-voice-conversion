@@ -38,12 +38,12 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(
       description="Convert voice signal with seq2seq model")
   parser.add_argument('--train_data_path', type=str,
-                      default="tcstar_data/training/")
+                      default="tcstar_data_trim/training/")
   parser.add_argument('--train_out_file', type=str,
-                      default="tcstar_data/seq2seq_train_datatable")
-  parser.add_argument('--test_data_path', type=str, default="tcstar_data/test/")
+                      default="tcstar_data_trim/seq2seq_train_datatable")
+  parser.add_argument('--test_data_path', type=str, default="tcstar_data_trim/test/")
   parser.add_argument('--test_out_file', type=str,
-                      default="tcstar_data/seq2seq_test_datatable")
+                      default="tcstar_data_trim/seq2seq_test_datatable")
   parser.add_argument('--val_fraction', type=float, default=0.25)
   parser.add_argument('--save-h5', dest='save_h5', action='store_true',
                       help='Save dataset to .h5 file')
