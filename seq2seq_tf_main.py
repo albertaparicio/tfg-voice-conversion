@@ -65,7 +65,7 @@ if __name__ == '__main__':
   parser.add_argument('--clip_norm', type=float, default=5)
   parser.add_argument('--attn_length', type=int, default=500)
   parser.add_argument('--attn_size', type=int, default=256)
-  parser.add_argument('--save_every', type=int, default=10)
+  parser.add_argument('--save_every', type=int, default=100)
   parser.add_argument('--no-train', dest='do_train',
                       action='store_false', help='Flag to train or not.')
   parser.add_argument('--no-test', dest='do_test',
@@ -74,8 +74,11 @@ if __name__ == '__main__':
   parser.add_argument('--pred_path', type=str, default="tf_predicted")
   parser.add_argument('--tb_path', type=str, default="")
   parser.add_argument('--log', type=str, default="INFO")
+  parser.add_argument('--load_model', dest='load_model', action='store_true',
+                      help='Load previous model before training')
 
-  parser.set_defaults(do_train=True, do_test=True, save_h5=False)
+  parser.set_defaults(do_train=True, do_test=True, save_h5=False,
+                      load_model=False)
   opts = parser.parse_args()
 
   # Initialize logger
@@ -112,7 +115,7 @@ def main(args):
                             learning_rate=args.learning_rate)
 
     logger.info('Start training')
-    train(seq2seq_model, dl)
+    train(seq2seq_model, dl, args)
 
   if args.do_test:
     tf.reset_default_graph()
@@ -193,9 +196,13 @@ logger.debug('Defined evaluate')
 logger.debug('Before define train')
 
 
-def train(model, dl):
+def train(model, dl, args):
   logger.debug('Inside train')
   with tf.Session() as sess:
+    if args.load_model:
+      # Load model
+      model.load(sess, os.path.join(opts.save_path, 'tf_train'))
+      logger.info('Loaded model successfully!')
     logger.debug('Define constants')
     batch_idx = 0
     curr_epoch = 0
