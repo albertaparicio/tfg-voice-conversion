@@ -280,3 +280,7 @@ tags
 /tcstar_data_trim/test/
 /tcstar_data_trim/speakers.list
 /tcstar_data_trim/basenames.list
+/tcstar_data_trim/tr_orig/
+/tcstar_data_trim/seq2seq_train_datatable.h5
+/tcstar_data_trim/seq2seq_test_datatable.h5
+/tcstar_data_trim/test_train/
