@@ -6,6 +6,8 @@
 # This import makes Python use 'print' as in Python 3.x
 from __future__ import print_function
 
+import os
+
 import h5py
 import numpy as np
 from keras.callbacks import ReduceLROnPlateau
@@ -25,39 +27,39 @@ build_datatable = False
 print('Starting...')
 
 if build_datatable:
-    # Build datatable of training and test data
-    # (data is already encoded with Ahocoder)
-    print('Saving training datatable...', end='')
-    train_data = ct.save_datatable(
-        'data/training/',
-        'train_data',
-        'data/train_datatable'
-    )
-    print('done')
+  # Build datatable of training and test data
+  # (data is already encoded with Ahocoder)
+  print('Saving training datatable...', end='')
+  train_data = ct.save_datatable(
+      'data/training/',
+      'train_data',
+      'data/train_datatable'
+      )
+  print('done')
 
-    print('Saving test datatable...', end='')
-    test_data = ct.save_datatable(
-        'data/test/',
-        'test_data',
-        'data/test_datatable'
-    )
-    print('done')
+  print('Saving test datatable...', end='')
+  test_data = ct.save_datatable(
+      'data/test/',
+      'test_data',
+      'data/test_datatable'
+      )
+  print('done')
 
 else:
-    # Retrieve datatables from .h5 files
-    print('Loading training datatable...', end='')
-    train_data = ct.load_datatable(
-        'data/train_datatable.h5',
-        'train_data'
-    )
-    print('done')
+  # Retrieve datatables from .h5 files
+  print('Loading training datatable...', end='')
+  train_data = ct.load_datatable(
+      'data/train_datatable.h5',
+      'train_data'
+      )
+  print('done')
 
-    print('Loading test datatable...', end='')
-    test_data = ct.load_datatable(
-        'data/test_datatable.h5',
-        'test_data'
-    )
-    print('done')
+  print('Loading test datatable...', end='')
+  test_data = ct.load_datatable(
+      'data/test_datatable.h5',
+      'test_data'
+      )
+  print('done')
 
 #######################
 # Sizes and constants #
@@ -98,20 +100,20 @@ trg_valid_frames[:, 0] = (trg_valid_frames[:, 0] -
 
 # Save training statistics
 with h5py.File('models/mvf_train_stats.h5', 'w') as f:
-    h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
-    h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
-    h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
-    h5_trg_train_std = f.create_dataset("trg_train_std", data=trg_train_std)
+  h5_src_train_mean = f.create_dataset("src_train_mean", data=src_train_mean)
+  h5_src_train_std = f.create_dataset("src_train_std", data=src_train_std)
+  h5_trg_train_mean = f.create_dataset("trg_train_mean", data=trg_train_mean)
+  h5_trg_train_std = f.create_dataset("trg_train_std", data=trg_train_std)
 
-    f.close()
+  f.close()
 
 # Apply context
 src_train_frames_context = np.column_stack((
-    apply_context(src_train_frames[:, 0], context_size), src_train_frames[:, 1]
-))
+  apply_context(src_train_frames[:, 0], context_size), src_train_frames[:, 1]
+  ))
 src_valid_frames_context = np.column_stack((
-    apply_context(src_valid_frames[:, 0], context_size), src_valid_frames[:, 1]
-))
+  apply_context(src_valid_frames[:, 0], context_size), src_valid_frames[:, 1]
+  ))
 
 # exit()
 
@@ -156,19 +158,28 @@ history = model.fit(
     verbose=1,
     validation_data=(src_valid_frames_context, trg_valid_frames),
     callbacks=[reduce_lr]
-)
+    )
 
 print('Saving model')
 model.save_weights('models/mvf_weights.h5')
 
 with open('models/mvf_model.json', 'w') as model_json:
-    model_json.write(model.to_json())
+  model_json.write(model.to_json())
 
-print('========================' +
-      '\n' +
-      '======= FINISHED =======' +
-      '\n' +
-      '========================'
-      )
+print('Saving training results')
+with h5py.File(os.path.join('training_results', 'baseline', 'mvf_history.h5'),
+               'w') as hist_file:
+  hist_file.create_dataset('loss', data=history.history['loss'],
+                           compression='gzip', compression_opts=9)
+  hist_file.create_dataset('val_loss', data=history.history['val_loss'],
+                           compression='gzip', compression_opts=9)
+  hist_file.create_dataset('epoch', data=history.epoch, compression='gzip',
+                           compression_opts=9)
+
+  hist_file.close()
+
+print('========================' + '\n' +
+      '======= FINISHED =======' + '\n' +
+      '========================')
 
 exit()
