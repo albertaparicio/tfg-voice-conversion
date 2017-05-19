@@ -163,8 +163,12 @@ if __name__ == '__main__':
   parser.add_argument('--log', type=str, default="INFO")
   # parser.add_argument('--load_model', dest='load_model', action='store_true',
   #                     help='Load previous model before training')
+  parser.add_argument('--server', dest='server', action='store_true',
+                      help='Commands to be run or not run if we are running '
+                           'on server')
 
-  parser.set_defaults(do_train=True, do_test=True, save_h5=False)  # ,
+  parser.set_defaults(do_train=True, do_test=True, save_h5=False,
+                      server=False)  # ,
   # load_model=False)
   opts = parser.parse_args()
 
@@ -661,27 +665,30 @@ def train_epochs(dataloader, encoder, decoder, learning_rate=0.01):
 # ``plot_losses`` saved while training.
 #
 
-import matplotlib
+if not opts.server:
+  import matplotlib
 
-matplotlib.use('TKagg')
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+  matplotlib.use('TKagg')
+  import matplotlib.pyplot as plt
+  import matplotlib.ticker as ticker
 
 
-def show_plot(points, filename='train_loss'):
-  if not os.path.exists(os.path.join(opts.save_path, 'torch_train', 'graphs')):
-    os.makedirs(os.path.join(opts.save_path, 'torch_train', 'graphs'))
+  def show_plot(points, filename='train_loss'):
+    if not os.path.exists(
+        os.path.join(opts.save_path, 'torch_train', 'graphs')):
+      os.makedirs(os.path.join(opts.save_path, 'torch_train', 'graphs'))
 
-  plt.figure()
-  # fig, ax = plt.subplots()
-  # this locator puts ticks at regular intervals
-  # loc = ticker.MultipleLocator(base=0.2)
-  # ax.yaxis.set_major_locator(loc)
-  plt.plot(points)
-  plt.grid(b=True)
-  plt.savefig(
-      os.path.join(opts.save_path, 'torch_train', 'graphs', filename + '.eps'),
-      bbox_inches='tight')
+    plt.figure()
+    # fig, ax = plt.subplots()
+    # this locator puts ticks at regular intervals
+    # loc = ticker.MultipleLocator(base=0.2)
+    # ax.yaxis.set_major_locator(loc)
+    plt.plot(points)
+    plt.grid(b=True)
+    plt.savefig(
+        os.path.join(opts.save_path, 'torch_train', 'graphs',
+                     filename + '.eps'),
+        bbox_inches='tight')
 
 
 ######################################################################
