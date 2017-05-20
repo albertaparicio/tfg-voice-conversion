@@ -143,7 +143,7 @@ if __name__ == '__main__':
   # parser.add_argument('--cell_type', type=str, default="lstm")
   parser.add_argument('--batch_size', type=int, default=10)
   parser.add_argument('--epoch', type=int, default=50)
-  # parser.add_argument('--learning_rate', type=float, default=0.00005)
+  parser.add_argument('--learning_rate', type=float, default=0.0005)
   # parser.add_argument('--dropout', type=float, default=0)
   parser.add_argument('--teacher_forcing_ratio', type=float, default=1)
   parser.add_argument('--SOS_token', type=int, default=0)
@@ -561,7 +561,7 @@ def time_since(since, percent):
 # of epochs, time so far, estimated time) and average loss.
 #
 
-def train_epochs(dataloader, encoder, decoder, learning_rate=0.01):
+def train_epochs(dataloader, encoder, decoder):
   start = time.time()
   plot_losses = []
   print_loss_total = 0  # Reset every print_every
@@ -573,8 +573,8 @@ def train_epochs(dataloader, encoder, decoder, learning_rate=0.01):
 
   # encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
   # decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
-  encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
-  decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
+  encoder_optimizer = optim.Adam(encoder.parameters(), lr=opts.learning_rate)
+  decoder_optimizer = optim.Adam(decoder.parameters(), lr=opts.learning_rate)
   # training_pairs = [variables_from_pair(random.choice(pairs))
   #                   for _ in range(n_epochs)]
   # criterion = nn.NLLLoss()
@@ -631,7 +631,7 @@ def train_epochs(dataloader, encoder, decoder, learning_rate=0.01):
       curr_epoch += 1
       batch_idx = 0
       print_loss_total = 0
-      
+
       # Save model
       # Instructions for saving and loading a model:
       # http://pytorch.org/docs/notes/serialization.html
