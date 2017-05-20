@@ -88,6 +88,7 @@ And for more, read the papers that introduced these topics:
 from __future__ import division, print_function, unicode_literals
 
 import argparse
+import glob
 import gzip
 import os
 import random
@@ -161,8 +162,8 @@ if __name__ == '__main__':
   parser.add_argument('--pred_path', type=str, default="torch_predicted")
   # parser.add_argument('--tb_path', type=str, default="")
   parser.add_argument('--log', type=str, default="INFO")
-  # parser.add_argument('--load_model', dest='load_model', action='store_true',
-  #                     help='Load previous model before training')
+  parser.add_argument('--load_model', dest='load_model', action='store_true',
+                      help='Load previous model before training')
   parser.add_argument('--server', dest='server', action='store_true',
                       help='Commands to be run or not run if we are running '
                            'on server')
@@ -211,7 +212,21 @@ def main(args):
     dl = DataLoader(args, logger_level=args.log, test=True,
                     max_seq_length=args.max_seq_length)
 
-    test(trained_encoder, trained_decoder, dl)
+    if args.load_model:
+      encoder = EncoderRNN(args.params_len, args.hidden_size, args.batch_size)
+      decoder = AttnDecoderRNN(args.hidden_size, args.params_len,
+                               batch_size=args.batch_size, n_layers=1,
+                               max_length=args.max_seq_length,
+                               dropout_p=0.1)
+      if use_cuda:
+        encoder = encoder.cuda()
+        decoder = decoder.cuda()
+
+    else:
+      encoder = trained_encoder
+      decoder = trained_decoder
+
+    test(encoder, decoder, dl)
 
 
 ######################################################################
@@ -466,7 +481,8 @@ def main(args):
 
 
 
-def train(input_variable, target_variable, encoder, decoder, encoder_optimizer,
+def train(input_variable, target_variable, encoder, decoder,
+          encoder_optimizer,
           decoder_optimizer, criterion, max_length):
   encoder_hidden = encoder.init_hidden()
 
@@ -625,7 +641,8 @@ def train_epochs(dataloader, encoder, decoder):
             opts.epoch,
             ((batch_idx % b_epoch) + 1) / b_epoch,
             print_loss_avg,
-            time_since(start, (total_batch_idx + 1) / (b_epoch * opts.epoch))))
+            time_since(start,
+                       (total_batch_idx + 1) / (b_epoch * opts.epoch))))
 
     if batch_idx >= b_epoch:
       curr_epoch += 1
@@ -635,16 +652,18 @@ def train_epochs(dataloader, encoder, decoder):
       # Save model
       # Instructions for saving and loading a model:
       # http://pytorch.org/docs/notes/serialization.html
-      with gzip.open(
-          os.path.join(opts.save_path, 'torch_train',
-                       'encoder_{}.pkl.gz'.format(curr_epoch)), 'wb') as enc:
-        torch.save(encoder.state_dict(), enc)
-      with gzip.open(
-          os.path.join(opts.save_path, 'torch_train',
-                       'decoder_{}.pkl.gz'.format(curr_epoch)), 'wb') as dec:
-        torch.save(decoder.state_dict(), dec)
+      # with gzip.open(
+      enc_file = os.path.join(opts.save_path, 'torch_train',
+                              'encoder_{}.pkl'.format(
+                                curr_epoch))  # , 'wb') as enc:
+      torch.save(encoder.state_dict(), enc_file)
+      # with gzip.open(
+      dec_file = os.path.join(opts.save_path, 'torch_train',
+                              'decoder_{}.pkl'.format(
+                                curr_epoch))  # , 'wb') as dec:
+      torch.save(decoder.state_dict(), dec_file)
 
-        # TODO Validation?
+      # TODO Validation?
 
     batch_idx += 1
     total_batch_idx += 1
@@ -653,7 +672,16 @@ def train_epochs(dataloader, encoder, decoder):
       logger.info('Finished epochs -> BREAK')
       break
 
-  show_plot(plot_losses)
+  if not opts.server:
+    show_plot(plot_losses)
+    
+  else:
+    save_path = os.path.join(opts.save_path, 'torch_train', 'graphs')
+
+    if not os.path.exists(save_path):
+      os.makedirs(save_path)
+
+    np.savetxt(os.path.join(save_path, 'train_losses' + '.csv'), plot_losses)
 
   return encoder, decoder
 
@@ -704,6 +732,21 @@ if not opts.server:
 #
 
 def test(encoder, decoder, dl):
+  if opts.load_model:
+    # Get filenames of last epoch files
+    enc_file = sorted(glob.glob(
+        os.path.join(opts.save_path, 'torch_train', 'encoder*.pkl')))[-1]
+    dec_file = sorted(glob.glob(
+        os.path.join(opts.save_path, 'torch_train', 'decoder*.pkl')))[-1]
+
+    # Open model files and load
+    # with gzip.open(enc_file, 'r') as enc:
+    #   enc_f = pickle.load(enc)
+    encoder.load_state_dict(torch.load(enc_file))
+    #
+    # with gzip.open(dec_file, 'wb') as dec:
+    decoder.load_state_dict(torch.load(dec_file))
+
   batch_idx = 0
   n_batch = 0
 
@@ -758,7 +801,8 @@ def test(encoder, decoder, dl):
 
     # Decode output frames
     predictions = np.array(decoded_frames).transpose((1, 0, 2))
-    batch_attentions = decoder_attentions[:di + 1].numpy().transpose((1, 0, 2))
+    batch_attentions = decoder_attentions[:di + 1].numpy().transpose(
+        (1, 0, 2))
 
     # TODO Decode speech data and display attentions
     # Save original U/V flags to save them to file
@@ -918,7 +962,7 @@ def test(encoder, decoder, dl):
 # single GRU layer. After about 40 minutes on a MacBook CPU we'll get some
 # reasonable results.
 #
-# .. Note:: 
+# .. Note::
 #    If you run this notebook you can train, interrupt the kernel,
 #    evaluate, and continue training later. Comment out the lines where the
 #    encoder and decoder are initialized and run ``trainEpochs`` again.
