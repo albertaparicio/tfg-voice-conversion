@@ -630,7 +630,8 @@ def train_epochs(dataloader, encoder, decoder, learning_rate=0.01):
     if batch_idx >= b_epoch:
       curr_epoch += 1
       batch_idx = 0
-
+      print_loss_total = 0
+      
       # Save model
       # Instructions for saving and loading a model:
       # http://pytorch.org/docs/notes/serialization.html
