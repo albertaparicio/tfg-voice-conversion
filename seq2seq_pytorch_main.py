@@ -674,7 +674,7 @@ def train_epochs(dataloader, encoder, decoder):
 
   if not opts.server:
     show_plot(plot_losses)
-    
+
   else:
     save_path = os.path.join(opts.save_path, 'torch_train', 'graphs')
 
@@ -749,6 +749,7 @@ def test(encoder, decoder, dl):
 
   batch_idx = 0
   n_batch = 0
+  attentions = []
 
   for (src_batch, src_batch_seq_len, trg_batch, trg_mask) in dl.next_batch(
       test=True):
@@ -801,8 +802,7 @@ def test(encoder, decoder, dl):
 
     # Decode output frames
     predictions = np.array(decoded_frames).transpose((1, 0, 2))
-    batch_attentions = decoder_attentions[:di + 1].numpy().transpose(
-        (1, 0, 2))
+    attentions.append(decoder_attentions[:di + 1].numpy().transpose((1, 0, 2)))
 
     # TODO Decode speech data and display attentions
     # Save original U/V flags to save them to file
@@ -931,6 +931,13 @@ def test(encoder, decoder, dl):
     batch_idx += 1
 
     n_batch += 1
+
+  # Dump attentions to pickle file
+  logger.info('Saving attentions to pickle file')
+  with gzip.open(
+      os.path.join(opts.save_path, 'torch_train', 'attentions.pkl.gz'),
+      'wb') as att_file:
+    pickle.dump(attentions, att_file)
 
 
 ######################################################################
