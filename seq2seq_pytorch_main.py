@@ -633,7 +633,7 @@ def train_epochs(dataloader, encoder, decoder):
 
     logger.info(
         'Batch {:2.0f}/{:2.0f} - Epoch {:2.0f}/{:2.0f} ({:3.2%}) - Loss={'
-        ':.4f} - Time: {'
+        ':.8f} - Time: {'
         '!s}'.format(
             batch_idx,
             b_epoch,
