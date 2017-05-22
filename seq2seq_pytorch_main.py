@@ -751,8 +751,14 @@ def test(encoder, decoder, dl):
   n_batch = 0
   attentions = []
 
-  for (src_batch, src_batch_seq_len, trg_batch, trg_mask) in dl.next_batch(
+  for (src_batch_padded, src_batch_seq_len, trg_batch, trg_mask) in dl.next_batch(
       test=True):
+    src_batch = []
+
+    # Take the last `seq_len` timesteps of each sequence to remove padding
+    for i in range(src_batch_padded.shape[0]):
+      src_batch.append(src_batch_padded[i,-src_batch_seq_len[i]:,:])
+
     # TODO Get filename from datatable
     f_name = format(n_batch + 1,
                     '0' + str(max(5, len(str(dl.src_test_data.shape[0])))))
@@ -1006,21 +1012,28 @@ def test(encoder, decoder, dl):
 # and labels:
 #
 
-def show_attention(input_sentence, output_words, attentions):
+def show_attention():
+  # Load attentions
+  logger.info('Loading attentions to pickle file')
+  with gzip.open(
+      os.path.join(opts.save_path, 'torch_train', 'attentions.pkl.gz'),
+      'r') as att_file:
+    attentions = pickle.load(att_file)
+
   # Set up figure with colorbar
   fig = plt.figure()
   ax = fig.add_subplot(111)
   cax = ax.matshow(attentions.numpy(), cmap='bone')
   fig.colorbar(cax)
 
-  # Set up axes
-  ax.set_xticklabels([''] + input_sentence.split(' ') +
-                     ['<EOS>'], rotation=90)
-  ax.set_yticklabels([''] + output_words)
-
-  # Show label at every tick
-  ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-  ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+  # # Set up axes
+  # ax.set_xticklabels([''] + input_sentence.split(' ') +
+  #                    ['<EOS>'], rotation=90)
+  # ax.set_yticklabels([''] + output_words)
+  #
+  # # Show label at every tick
+  # ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+  # ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
   plt.show()
 
