@@ -340,6 +340,3 @@ class Seq2Seq(object):
         return True
       else:
         return False
-
-
-
