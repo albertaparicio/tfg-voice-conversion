@@ -284,3 +284,4 @@ tags
 /tcstar_data_trim/seq2seq_train_datatable.h5
 /tcstar_data_trim/seq2seq_test_datatable.h5
 /tcstar_data_trim/test_train/
+/training_results/torch_train/
