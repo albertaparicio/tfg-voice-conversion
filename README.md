@@ -1,5 +1,7 @@
 # Voice Conversion using Deep Learning
 
+[![Download PDF](https://img.shields.io/badge/Download-PDF-brightgreen.svg)](http://upcommons.upc.edu/bitstream/handle/2117/105638/AparicioAlbert_FinalReport.pdf?sequence=1&isAllowed=y)
+
 This project will be carried out at the Signal Theory and Communications Department (TSC)
 of the Polytechnic University of Catalonia (UPC). Specifically, it will be developed at the Speech Processing investigation group (VEU) as a contribution to its research project **DeepVoice: Deep Learning Technologies for Speech and Audio Processing**.
 
