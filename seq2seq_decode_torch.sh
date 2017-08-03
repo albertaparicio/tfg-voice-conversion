@@ -24,7 +24,7 @@ set -o nounset                              # Treat unset variables as an error
 
 #PARAMS_DIR="$1"
 # PARAMS_DIR='data/test/predicted/SF1-TF1'
-PARAMS_DIR='tcstar_data_trim/test_train/tf_predicted/'
+PARAMS_DIR='tcstar_data_trim/test/torch_predicted/'
 
 while read TRG_SPK <&5; do
     while read SRC_SPK <&4; do
@@ -53,5 +53,5 @@ while read TRG_SPK <&5; do
 
             echo "Decoded ${BASENAME}"
         done 3< ${PARAMS_DIR}${SRC_SPK}-${TRG_SPK}_uniq.list
-    done 4< 'tcstar_data_trim/test_train/src_speakers.list'
-done 5< 'tcstar_data_trim/test_train/trg_speakers.list'
+    done 4< 'tcstar_data_trim/test/src_speakers.list'
+done 5< 'tcstar_data_trim/test/trg_speakers.list'

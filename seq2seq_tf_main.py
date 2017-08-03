@@ -23,7 +23,8 @@ from ahoproc_tools import error_metrics
 from tfglib.seq2seq_normalize import mask_data
 from tfglib.utils import init_logger
 
-from seq2seq_tf_model import DataLoader, Seq2Seq
+from seq2seq_dataloader import DataLoader
+from seq2seq_tf_model import Seq2Seq
 
 # Conditional imports
 if version_info.major > 2:
@@ -41,7 +42,8 @@ if __name__ == '__main__':
                       default="tcstar_data_trim/training/")
   parser.add_argument('--train_out_file', type=str,
                       default="tcstar_data_trim/seq2seq_train_datatable")
-  parser.add_argument('--test_data_path', type=str, default="tcstar_data_trim/test/")
+  parser.add_argument('--test_data_path', type=str,
+                      default="tcstar_data_trim/test/")
   parser.add_argument('--test_out_file', type=str,
                       default="tcstar_data_trim/seq2seq_test_datatable")
   parser.add_argument('--val_fraction', type=float, default=0.25)
